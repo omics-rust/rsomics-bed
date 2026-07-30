@@ -16,10 +16,9 @@ suite, and the pinned-oracle version check pass. Each record must include:
 
 ## 2026-07-30 pilot
 
-This result is for the uncommitted initial repository state on 2026-07-30.
-There is therefore no Git revision yet. The first commit must replace this
-sentence with its exact revision after the same commands pass in independent
-review.
+The implementation measured below is Git revision
+`de04f71c806cd27fdbbfe142361709aefedcda12`, independently reviewed after the
+same compatibility, scaling, and package gates passed.
 
 Environment:
 
