@@ -109,10 +109,14 @@ claims.
 
 ## Remaining release gates
 
+Evidence revision `76d02dbc9c0fd549782f1e68e2b0ef5e64f13d45`
+passed exact-head CI run `30556922040` on native Linux and macOS for both
+`x86_64` and `aarch64`.
+
 - native Linux `aarch64` has correctness CI but no representative performance
   host;
 - the shared `--threads` and `--seed` flags are accepted even though no current
   BED operation uses them;
 - the checked `rsomics-intervals` API used to remove the product-side backend
   guard is not yet published;
-- the final post-change exact-head CI and public API review remain.
+- the final publication public API review remains.
