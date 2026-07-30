@@ -46,15 +46,14 @@ All operations skip blank lines, `#` comments, and every line whose bytes begin
 with lowercase `track` or `browser`, matching bedtools 2.31.1. Consequently,
 chromosome names with either lowercase prefix are interpreted as header lines.
 
-The published `rsomics-intervals 0.2.0` overlap index stores coordinates in an
-`i32` backend and exposes infallible build/query calls. Its last safe inclusive
-coordinate is `i32::MAX - 1`, so the end-exclusive limit is `i32::MAX`.
-`intersect` and `subtract` enforce that boundary before every index build or
-query; an interval beginning at `i32::MAX` never reaches the backend. This is a
-temporary product-side guard until a published intervals release exposes
-recoverable checked calls. The other operations do not use the overlap index;
-they reject any zero-length widening that would exceed the supported `u64`
-coordinate domain.
+The temporarily pinned `rsomics-intervals 0.3` revision stores indexed
+coordinates in an `i32` backend. Its last safe inclusive coordinate is
+`i32::MAX - 1`, so the end-exclusive limit is `i32::MAX`. `intersect` and
+`subtract` currently enforce that boundary before every index build or query.
+The foundation now exposes recoverable checked calls; replacing the duplicate
+product guard is the next explicit compatibility change, not hidden inside
+this dependency migration. The other operations reject only zero-length
+widening outside the supported `u64` coordinate domain.
 
 `intersect` and `subtract` also intentionally reject a zero-length A or B
 record at `0-0`. bedtools 2.31.1 accepts such records, but its virtual interval

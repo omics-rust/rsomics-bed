@@ -115,8 +115,6 @@ passed exact-head CI run `30556922040` on native Linux and macOS for both
 
 - native Linux `aarch64` has correctness CI but no representative performance
   host;
-- the shared `--threads` and `--seed` flags are accepted even though no current
-  BED operation uses them;
-- the checked `rsomics-intervals` API used to remove the product-side backend
-  guard is not yet published;
+- the checked `rsomics-intervals` API is available at an unpublished exact
+  revision, but the product-side backend guard has not yet been removed;
 - the final publication public API review remains.

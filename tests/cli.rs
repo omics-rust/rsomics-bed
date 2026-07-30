@@ -22,6 +22,11 @@ fn top_level_and_nested_help_render() {
     for command in ["sort", "merge", "intersect", "subtract", "complement"] {
         assert!(top.contains(command), "{top}");
     }
+    assert!(top.contains("Global options:"), "{top}");
+    assert!(top.contains("--json"), "{top}");
+    for absent in ["--threads", "--seed", "--quiet", "--verbose"] {
+        assert!(!top.contains(absent), "{top}");
+    }
 
     let nested = Command::new(binary())
         .args(["intersect", "--help"])
@@ -31,6 +36,8 @@ fn top_level_and_nested_help_render() {
     let nested = String::from_utf8(nested.stdout).unwrap();
     assert!(nested.contains("--a <BED>"), "{nested}");
     assert!(nested.contains("--b <BED>"), "{nested}");
+    assert!(nested.contains("Input/output:"), "{nested}");
+    assert!(nested.contains("Global options:"), "{nested}");
     assert!(!nested.contains("rsomics-bed-intersect"), "{nested}");
 }
 

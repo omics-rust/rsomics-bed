@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use clap::{Args, Parser, Subcommand};
-use rsomics_common::{CommonFlags, Result, RsomicsError, ToolMeta, run as run_tool};
+use rsomics_common::{OutputArgs, Result, RsomicsError, ToolMeta, run as run_tool};
 
 use crate::io::{open_input, with_output};
 use crate::{complement, intersect, merge, read_genome, sort, subtract};
@@ -24,7 +24,7 @@ const META: ToolMeta = ToolMeta {
 )]
 struct Cli {
     #[command(flatten)]
-    common: CommonFlags,
+    output: OutputArgs,
 
     #[command(subcommand)]
     command: Command,
@@ -45,6 +45,7 @@ enum Command {
 }
 
 #[derive(Debug, Args)]
+#[command(next_help_heading = "Input/output")]
 struct UnaryArgs {
     /// Input BED file; omit or use - for standard input
     #[arg(value_name = "BED")]
@@ -56,6 +57,7 @@ struct UnaryArgs {
 }
 
 #[derive(Debug, Args)]
+#[command(next_help_heading = "Input/output")]
 struct BinaryArgs {
     /// BED file A; use - for standard input
     #[arg(short = 'a', long, value_name = "BED")]
@@ -71,6 +73,7 @@ struct BinaryArgs {
 }
 
 #[derive(Debug, Args)]
+#[command(next_help_heading = "Input/output")]
 struct ComplementArgs {
     /// Input sorted BED file; omit or use - for standard input
     #[arg(value_name = "BED")]
@@ -87,13 +90,13 @@ struct ComplementArgs {
 
 #[must_use]
 pub(crate) fn run() -> process::ExitCode {
-    let cli = Cli::parse();
-    let common = cli.common.clone();
-    run_tool(&common, META, || execute(cli))
+    let cli = rsomics_help::parse::<Cli>();
+    let output = cli.output.clone();
+    run_tool(&output, META, || execute(cli))
 }
 
 fn execute(cli: Cli) -> Result<()> {
-    let json = cli.common.json;
+    let json = cli.output.json;
     match cli.command {
         Command::Sort(args) => {
             require_named_json_output(json, args.output.as_deref())?;
@@ -229,6 +232,17 @@ mod tests {
         let help = error.to_string();
         assert!(help.contains("--a <BED>"), "{help}");
         assert!(help.contains("--b <BED>"), "{help}");
+    }
+
+    #[test]
+    fn global_options_are_limited_to_shared_output() {
+        let error = Cli::try_parse_from(["rsomics-bed", "--help"]).unwrap_err();
+        let help = error.to_string();
+        assert!(help.contains("Global options:"), "{help}");
+        assert!(help.contains("--json"), "{help}");
+        for absent in ["--threads", "--seed", "--quiet", "--verbose"] {
+            assert!(!help.contains(absent), "{help}");
+        }
     }
 
     #[test]

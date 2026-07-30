@@ -36,14 +36,13 @@ the product/subcommand command tree and renders nested help directly.
 
 ## Dependency boundary
 
-`rsomics-intervals 0.2.0` is consumed only for its generic interval model and
+`rsomics-intervals 0.3` is consumed only for its generic interval model and
 overlap index. BED parsing, headers, column preservation, zero-length policy,
 sortedness, chromosome-size validation, and output formatting remain private to
-this product. Because the published backend currently exposes infallible calls,
-the product temporarily rejects indexed intervals beyond its last safe
-inclusive coordinate (`i32::MAX - 1`) before build or query. A future published
-release with recoverable checked build/query APIs should replace this local
-guard.
+this product. The product still rejects indexed intervals beyond the backend's
+last safe inclusive coordinate (`i32::MAX - 1`) before build or query. The
+foundation's checked build/query API now makes that guard redundant; removing
+it remains a separate product behavior change with its own compatibility gate.
 
 Distinct non-empty B coordinate pairs are indexed once and expanded back to
 their original record IDs for intersect queries. This retains duplicate
