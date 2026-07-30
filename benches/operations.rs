@@ -7,6 +7,7 @@ use criterion::{Criterion, criterion_group, criterion_main};
 use tempfile::TempDir;
 
 const RECORDS: usize = 50_000;
+const CHROMOSOMES: usize = 10;
 const DENSE_COUNTS: [usize; 4] = [500, 1_000, 2_000, 4_000];
 
 struct DenseFixtures {
@@ -38,32 +39,61 @@ impl Fixtures {
         let mut sorted_writer = writer(&sorted);
         let mut a_writer = writer(&a);
         let mut b_writer = writer(&b);
-        for index in 0..RECORDS {
-            let reverse = RECORDS - index - 1;
+        let mut genome_writer = writer(&genome);
+        assert_eq!(RECORDS % CHROMOSOMES, 0);
+        let per_chromosome = RECORDS / CHROMOSOMES;
+        for chromosome_index in 1..=CHROMOSOMES {
+            let chromosome = format!("chr{chromosome_index:02}");
+            for index in 0..per_chromosome {
+                let reverse = per_chromosome - index - 1;
+                writeln!(
+                    unsorted_writer,
+                    "{chromosome}\t{}\t{}\tU{chromosome_index}-{reverse}",
+                    reverse * 100 + 5,
+                    reverse * 100 + 23
+                )
+                .unwrap();
+
+                let group = index / 5;
+                let member = index % 5;
+                let merge_start = group * 100 + member * 10 + 1;
+                writeln!(
+                    sorted_writer,
+                    "{chromosome}\t{merge_start}\t{}\tM{chromosome_index}-{index}",
+                    merge_start + 15
+                )
+                .unwrap();
+
+                let start = index * 100 + 5;
+                writeln!(
+                    a_writer,
+                    "{chromosome}\t{start}\t{}\tA{chromosome_index}-{index}",
+                    start + 18
+                )
+                .unwrap();
+                let b_start = index * 100 + 10;
+                writeln!(
+                    b_writer,
+                    "{chromosome}\t{b_start}\t{}\tB{chromosome_index}-{index}",
+                    b_start + 6
+                )
+                .unwrap();
+                if index % 50 == 0 {
+                    writeln!(
+                        b_writer,
+                        "{chromosome}\t{b_start}\t{}\tB{chromosome_index}-{index}",
+                        b_start + 6
+                    )
+                    .unwrap();
+                }
+            }
             writeln!(
-                unsorted_writer,
-                "chr1\t{}\t{}\tU{reverse}",
-                reverse * 4,
-                reverse * 4 + 1
+                genome_writer,
+                "{chromosome}\t{}",
+                per_chromosome * 100 + 200
             )
             .unwrap();
-            writeln!(
-                sorted_writer,
-                "chr1\t{}\t{}\tS{index}",
-                index * 4,
-                index * 4 + 2
-            )
-            .unwrap();
-            writeln!(
-                a_writer,
-                "chr1\t{}\t{}\tA{index}",
-                index * 4 + 2,
-                index * 4 + 3
-            )
-            .unwrap();
-            writeln!(b_writer, "chr1\t{}\t{}\tB{index}", index * 4, index * 4 + 1).unwrap();
         }
-        std::fs::write(&genome, format!("chr1\t{}\n", RECORDS * 4 + 100)).unwrap();
 
         let dense = DENSE_COUNTS
             .into_iter()

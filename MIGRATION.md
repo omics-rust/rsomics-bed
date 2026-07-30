@@ -26,7 +26,9 @@ remain unchanged.
   explicit origin-zero divergence test;
 - complement: ordinary, zero-length, unknown-chromosome, inverted, and
   unsorted fixtures.
-- all five operations: a 50,000-record end-to-end Criterion comparison with the
+- all five operations: seeded random differentials with duplicates,
+  zero-length features, unordered inputs, and multiple chromosomes, plus a
+  one-million-record end-to-end output and performance comparison with the
   pinned bedtools 2.31.1 oracle; see `PERFORMANCE.md`.
 
 The old single-command `rsomics-help` specifications were not copied. Clap owns

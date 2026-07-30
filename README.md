@@ -29,7 +29,10 @@ I/O failures use the stable common exit codes 1, 2, and 4 respectively.
 ## Current slice
 
 - `sort` performs a stable lexicographic chromosome/start sort while preserving
-  all original BED columns.
+  all original BED columns. bedtools does not preserve input order for every
+  exact coordinate tie; stable tie ordering is an intentional product
+  guarantee, so compatibility checks compare coordinate order and record
+  multiplicity for that case rather than claiming byte-identical tie order.
 - `merge` requires grouped chromosomes and nondecreasing starts and emits BED3
   merged spans. A zero-length feature at coordinate zero is rejected when it
   would define a new cluster's negative widened start; it remains valid when a
@@ -74,9 +77,12 @@ archive after verifying its SHA-256 digest on native Linux and macOS runners for
 both `x86_64` and `aarch64`.
 
 `cargo bench --bench operations` compares all five operations with bedtools on
-50,000-record fixtures. Release measurements, inputs, flags, and machine
-provenance are recorded in [PERFORMANCE.md](PERFORMANCE.md). A new release must
-retain a strict throughput or resource-use advantage on its declared hot paths.
+50,000-record, ten-chromosome fixtures with real overlap, output, duplicates,
+merge groups, and complement gaps. The representative release gate scales the
+same construction to one million primary records and verifies complete output
+hashes before timing. Measurements, inputs, flags, and machine provenance are
+recorded in [PERFORMANCE.md](PERFORMANCE.md). A new release must retain a
+strict throughput or resource-use advantage on its declared hot paths.
 
 ## Origin
 

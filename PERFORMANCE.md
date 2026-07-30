@@ -1,107 +1,118 @@
 # Performance evidence
 
-The release benchmark is `cargo bench --bench operations`. It runs each
-`rsomics-bed` operation and its bedtools 2.31.1 oracle on deterministic
-50,000-record fixtures while discarding output to avoid memory-backed capture.
+The release benchmark is `cargo bench --bench operations`. It compares every
+current `rsomics-bed` operation with bedtools 2.31.1 on deterministic
+multi-chromosome fixtures while discarding timed output.
 
-Results are recorded only after an optimized build, the full compatibility
-suite, and the pinned-oracle version check pass. Each record must include:
+The fixture is designed to exercise work rather than process startup alone:
 
-- exact Git revision;
-- Rust and bedtools versions;
-- machine, operating system, and architecture;
-- fixture construction, record count, and command flags;
-- timing distribution and peak-memory method;
-- the release decision for each hot path.
+- sort receives reverse-coordinate BED4 records on ten chromosomes;
+- merge receives groups of five overlapping intervals;
+- every A record in intersect has a B hit, and every fiftieth B interval is
+  duplicated;
+- subtract emits two fragments per A record;
+- complement emits the real gaps between merged groups.
 
-## 2026-07-30 pilot
+Results are recorded only after the complete output of every operation matches
+the pinned oracle and the full test suite passes. Each release record includes
+the exact source and binary identities, fixture hashes, command flags, timing
+distribution, peak-memory method, and a per-operation decision.
 
-The implementation measured below is Git revision
-`de04f71c806cd27fdbbfe142361709aefedcda12`, independently reviewed after the
-same compatibility, scaling, and package gates passed.
+## 2026-07-30 representative Linux gate
 
-Environment:
+Source and tools:
 
-- Mac mini `Mac14,3`, Apple M2 (four performance and four efficiency cores),
-  8 GB memory;
-- macOS 26.6 (build 25G72), `arm64`;
-- `rustc 1.97.1` and `cargo 1.97.1` from Homebrew;
-- bedtools `v2.31.1`;
-- Hyperfine `1.20.0`.
+- `rsomics-bed` Git revision
+  `ed415eeebd9d6a3bcb34cc9cf15bcfc5f7c587cd`;
+- release binary SHA-256
+  `8f4808840fa5a8cab88079aa617f60cef2c1196fb5dbf0edd2dd8a3f9a29ae17`;
+- `rustc 1.91.0 (f8297e351 2025-10-28)`;
+- bedtools `v2.31.1`, built from the release archive whose SHA-256 is
+  `fc7e660c2279b1e008b80aca0165a4a157daf4994d08a533ee925d73ce732b97`;
+- bedtools binary SHA-256
+  `40c465f999a58dc8ff42959ff8635ede4f54dce51a4309e0fa43afa7c9a38e56`.
 
-The deterministic fixture contains 50,000 records on `chr1`. Sort receives the
-records in reverse coordinate order. Merge and complement receive
-`[4i, 4i+2)`. Intersect and subtract use non-overlapping A records
-`[4i+2, 4i+3)` and B records `[4i, 4i+1)`. The genome length is 200,100.
-All output is sent to `/dev/null`.
+The host was `dell-Precision-7920-Tower`, Ubuntu 22.04, Linux
+6.8.0-90-generic, `x86_64`, with two Intel Xeon Gold 6238R CPUs. Commands were
+bound to physical cores 48-51 on one socket. Source, Cargo home, target output,
+temporary files, fixtures, and results remained under
+`/data1/liangjy/rsomics-linux-x86_64-20260730/bed-gate`.
 
-The complete benchmark command and configuration are:
+The formal fixture has 1,000,000 A or primary records across ten chromosomes.
+B has 1,020,000 records because of the deliberate duplicates. Fixture
+SHA-256 values are:
 
-```sh
-CARGO_HOME=/Volumes/KIOXIA/Developments/cargo-home \
-CARGO_TARGET_DIR=/Volumes/KIOXIA/Developments/cargo-target/rsomics-bed \
-TMPDIR=/Volumes/KIOXIA/Developments/tmp \
-cargo bench --bench operations -- --warm-up-time 1 --measurement-time 2
-```
+| Input | Bytes | SHA-256 |
+|---|---:|---|
+| reverse sort | 30,766,670 | `60a5feaa6296923bbca5045df9b8b5b93b60f4ecb44e79c62b5b42a3eb6e3e7f` |
+| merge/complement | 29,877,790 | `e62523d7f64e7a8d40e81da71cd45cd7842322c5d80577b3acffcf8e1da2632b` |
+| A | 30,766,670 | `bbdf49df43933b13171b201c0a00c6b71b0f301ac104f189949f8fe4665aa3d2` |
+| B | 31,381,970 | `b90a8954bfe3e358f679882dbd9ee4d766b436bcdced98e13a534df45143ee46` |
+| genome | 150 | `36fa2190ac75b78680667f540c8db147444fbb4426c9555cfe951584c5027095` |
 
-Criterion used ten samples after a one-second warm-up with a requested
-two-second measurement target. It automatically extended the two slow bedtools
-cases to about 20 seconds so every sample contained one iteration. The
-intervals below are Criterion's reported estimates; the speedup uses the
-central estimate.
+Before timing, each complete output matched bedtools byte for byte:
 
-| Operation | rsomics-bed | bedtools 2.31.1 | Speedup |
-|---|---:|---:|---:|
-| sort | 12.262–12.381 ms (12.313 ms) | 37.058–37.327 ms (37.201 ms) | 3.02x |
-| merge | 14.870–14.990 ms (14.918 ms) | 24.366–24.748 ms (24.544 ms) | 1.65x |
-| intersect | 27.941–28.452 ms (28.116 ms) | 2.0119–2.0553 s (2.0299 s) | 72.20x |
-| subtract | 29.230–30.408 ms (29.711 ms) | 2.0220–2.0484 s (2.0331 s) | 68.43x |
-| complement | 15.440–16.781 ms (15.775 ms) | 33.742–34.849 ms (34.106 ms) | 2.16x |
+| Operation | Output lines | Output bytes | SHA-256 |
+|---|---:|---:|---|
+| sort | 1,000,000 | 30,766,670 | `ff81f1cb965c57d8dfe282a76382e54579b5fdf7f24929837a71220ac1a8c209` |
+| merge | 200,000 | 4,177,770 | `c26e988fae5a0ba8e6835117609ee65d2983d5b32ee24f8b9396e65d20d1b038` |
+| intersect | 1,020,000 | 31,381,970 | `40a55d578b0b58e58c3c124e39850d31ac9a551c5a4f77a491891707e37c94b6` |
+| subtract | 2,000,000 | 61,533,350 | `6bbd97179ccfbd6a6d545b77f3c56cdea1a7661ad60b4dbcbef01a233c361772` |
+| complement | 200,010 | 4,177,940 | `f66397a8bdd2109271c667715f0e7a18a82f7cfe99618475c883216b936964fc` |
 
-The benchmark also contains an adversarial dense-subtract scaling lane. For
-each `n`, A contains `n` copies of `[10000,10001)` and B contains the `n`
-distinct intervals `[i,20000+i)`. Every A overlaps every raw B record. The
-command is:
+GNU `time` ran one warmup followed by ten measurements for each command.
+Elapsed values are mean and sample standard deviation; peak RSS is the median
+of the ten process high-water marks.
 
-```sh
-CARGO_HOME=/Volumes/KIOXIA/Developments/cargo-home \
-CARGO_TARGET_DIR=/Volumes/KIOXIA/Developments/cargo-target/rsomics-bed \
-TMPDIR=/Volumes/KIOXIA/Developments/tmp \
-cargo bench --bench operations -- dense_subtract \
-  --warm-up-time 1 --measurement-time 2
-```
+| Operation | rsomics-bed | bedtools 2.31.1 | Speedup | RSS KiB, ours / bedtools |
+|---|---:|---:|---:|---:|
+| sort | 0.409 ± 0.006 s | 1.071 ± 0.014 s | 2.62x | 198,016 / 360,624 |
+| merge | 0.198 ± 0.004 s | 0.225 ± 0.005 s | 1.14x | 2,688 / 4,480 |
+| intersect | 1.002 ± 0.008 s | 2.615 ± 0.011 s | 2.61x | 261,140 / 344,960 |
+| subtract | 0.960 ± 0.019 s | 2.992 ± 0.017 s | 3.12x | 289,946 / 344,960 |
+| complement | 0.239 ± 0.006 s | 0.297 ± 0.007 s | 1.24x | 5,376 / 4,480 |
+
+All five operations pass the throughput gate on this representative workload.
+Sort, merge, intersect, and subtract also use less peak memory. Complement uses
+about 20% more peak memory but retains a strict throughput advantage.
+
+The raw JSON is
+`/data1/liangjy/rsomics-linux-x86_64-20260730/bed-gate/results/representative-1m.json`,
+SHA-256
+`277aa73ccd944cc00331f9d7b111467fca5b86ba123ab2a5f5ef187649a6bbbc`.
+
+## Dense-subtract scaling
+
+The Criterion benchmark also contains an adversarial scaling lane. For each
+`n`, A contains `n` copies of `[10000,10001)` and B contains the `n` distinct
+intervals `[i,20000+i)`. Every A overlaps every raw B record.
+
+The original Apple M2 measurements remain useful for the scaling shape:
 
 | Dense records | rsomics-bed | bedtools 2.31.1 | Speedup |
 |---:|---:|---:|---:|
-| 500 | 2.7841–2.8242 ms (2.8004 ms) | 7.9931–8.0777 ms (8.0238 ms) | 2.87x |
-| 1,000 | 2.8588–2.9266 ms (2.8873 ms) | 21.731–21.945 ms (21.804 ms) | 7.55x |
-| 2,000 | 3.2800–3.3600 ms (3.3120 ms) | 74.498–75.852 ms (75.057 ms) | 22.66x |
-| 4,000 | 4.1826–4.2034 ms (4.1898 ms) | 285.95–307.37 ms (294.88 ms) | 70.38x |
+| 500 | 2.800 ms | 8.024 ms | 2.87x |
+| 1,000 | 2.887 ms | 21.804 ms | 7.55x |
+| 2,000 | 3.312 ms | 75.057 ms | 22.66x |
+| 4,000 | 4.190 ms | 294.88 ms | 70.38x |
 
-Peak resident memory was measured once per command on the same 50,000-record
-fixture. For example, the exact subtract commands were:
+This lane supports the decision to pre-merge B coverage for subtraction; it is
+not used as a representative end-to-end speedup claim.
 
-```sh
-/usr/bin/time -lp rsomics-bed subtract -a "$A" -b "$B" >/dev/null
-/usr/bin/time -lp bedtools subtract -a "$A" -b "$B" >/dev/null
-```
+## Superseded sparse pilot
 
-`A` and `B` are the deterministic files generated by `benches/operations.rs`.
-The measurement includes process startup and is a coarse high-water mark, not
-a distribution.
+An earlier 50,000-record Apple M2 pilot reported 72.20x intersect and 68.43x
+subtract speedups. Its A and B fixtures did not overlap, so both commands
+produced empty output. Those figures describe a sparse no-hit case only and
+are superseded by the representative Linux gate above. They are not release
+claims.
 
-| Operation | rsomics-bed | bedtools 2.31.1 |
-|---|---:|---:|
-| sort | 10,403,840 B | 27,574,272 B |
-| merge | 2,539,520 B | 2,752,512 B |
-| intersect | 16,908,288 B | 16,515,072 B |
-| subtract | 19,251,200 B | 16,613,376 B |
-| complement | 3,473,408 B | 2,703,360 B |
+## Remaining release gates
 
-The provisional release decision is **pass on throughput for all five hot
-paths**. Sort and merge also reduce peak memory. Intersect and subtract trade
-about 2% and 16% peak memory, respectively, for higher throughput, while
-complement trades about 28% peak memory for higher throughput. The result does
-not authorize publication: the exact first-commit revision, native
-four-target CI, and an independent public-API/hot-path review remain release
-gates.
+- native Linux `aarch64` has correctness CI but no representative performance
+  host;
+- the shared `--threads` and `--seed` flags are accepted even though no current
+  BED operation uses them;
+- the checked `rsomics-intervals` API used to remove the product-side backend
+  guard is not yet published;
+- the final post-change exact-head CI and public API review remain.
