@@ -24,7 +24,6 @@ pub fn intersect(a_input: impl Read, b_input: impl Read, output: impl Write) -> 
     let mut candidate_ids = Vec::new();
 
     while let Some(record) = a.next_record()? {
-        b.ensure_query(&record, "A")?;
         if record.start == record.end {
             emit_zero_length_a(&record, &b, &mut candidate_ids, &mut output)?;
         } else {
@@ -40,7 +39,7 @@ fn emit_zero_length_a(
     candidate_ids: &mut Vec<usize>,
     output: &mut dyn Write,
 ) -> Result<()> {
-    b.intersection_candidates(a, candidate_ids);
+    b.intersection_candidates(a, "A", candidate_ids)?;
     for _ in candidate_ids {
         a.write_raw(output)?;
     }
@@ -53,7 +52,7 @@ fn emit_nonzero_a(
     candidate_ids: &mut Vec<usize>,
     output: &mut dyn Write,
 ) -> Result<()> {
-    b.intersection_candidates(a, candidate_ids);
+    b.intersection_candidates(a, "A", candidate_ids)?;
     for &id in candidate_ids.iter() {
         let candidate = b.record(id);
         let (low, high) = if candidate.start == candidate.end {
@@ -131,7 +130,12 @@ mod tests {
             first_unrepresentable + 1
         );
         let error = intersect(&b"chr1\t0\t1\tA\n"[..], b.as_bytes(), Vec::new()).unwrap_err();
-        assert!(error.to_string().contains("maximum inclusive coordinate"));
+        assert!(
+            error.to_string().contains(
+                "B interval index: coordinate 2147483647 exceeds the interval-index backend maximum"
+            ),
+            "{error}"
+        );
     }
 
     #[test]
@@ -142,8 +146,12 @@ mod tests {
             first_unrepresentable + 1
         );
         let error = intersect(a.as_bytes(), &b"chr1\t0\t1\tB\n"[..], Vec::new()).unwrap_err();
-        assert!(error.to_string().contains("A interval"), "{error}");
-        assert!(error.to_string().contains("maximum inclusive coordinate"));
+        assert!(
+            error.to_string().contains(
+                "A interval index: coordinate 2147483647 exceeds the interval-index backend maximum"
+            ),
+            "{error}"
+        );
     }
 
     #[test]

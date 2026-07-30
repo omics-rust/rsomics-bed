@@ -5,23 +5,21 @@ use std::io::{BufWriter, Read, Write};
 use rsomics_common::{Context, Result};
 
 use crate::bed::{BedReader, BedRecord};
-use crate::overlap_index::IndexedBed;
+use crate::overlap_index::CoverageBed;
 
 /// Remove B coverage from A while preserving A's trailing columns.
 ///
 /// # Errors
 ///
-/// Returns an error for malformed BED, I/O failures, coordinates outside the
-/// pinned interval-index backend, or zero-length widening outside the `u64`
-/// coordinate domain.
+/// Returns an error for malformed BED, I/O failures, or zero-length widening
+/// outside the `u64` coordinate domain.
 pub fn subtract(a_input: impl Read, b_input: impl Read, output: impl Write) -> Result<()> {
-    let b = IndexedBed::load_for_subtract(b_input, "B")?;
+    let b = CoverageBed::load(b_input, "B")?;
     let mut a = BedReader::new(a_input);
     let mut output = BufWriter::new(output);
     let mut covers = Vec::new();
 
     while let Some(record) = a.next_record()? {
-        b.ensure_query(&record, "A")?;
         subtract_record(&record, &b, &mut covers, &mut output)?;
     }
     output.flush().rs_context("flushing subtracted BED output")
@@ -29,11 +27,11 @@ pub fn subtract(a_input: impl Read, b_input: impl Read, output: impl Write) -> R
 
 fn subtract_record(
     a: &BedRecord,
-    b: &IndexedBed,
+    b: &CoverageBed,
     covers: &mut Vec<(u64, u64)>,
     output: &mut dyn Write,
 ) -> Result<()> {
-    b.coverage_overlaps(a, covers);
+    b.overlaps(a, "A", covers)?;
     if a.start == a.end {
         let target = (a.start - 1, a.end + 1);
         if covers.as_slice() != [target] {
@@ -164,27 +162,33 @@ mod tests {
     }
 
     #[test]
-    fn maximum_backend_coordinate_is_supported() {
-        let limit = i32::MAX as u64;
-        let maximum = limit - 1;
-        let a = format!("chr1\t{maximum}\t{limit}\tA\n");
-        let b = format!("chr1\t{maximum}\t{limit}\tB\n");
+    fn nonzero_coordinates_beyond_the_interval_backend_are_supported() {
+        let start = i32::MAX as u64;
+        let end = start + 1;
+        let a = format!("chr1\t{start}\t{end}\tA\n");
+        let b = format!("chr1\t{start}\t{end}\tB\n");
         let mut output = Vec::new();
         subtract(a.as_bytes(), b.as_bytes(), &mut output).unwrap();
         assert!(output.is_empty());
     }
 
     #[test]
-    fn first_unrepresentable_coordinate_is_rejected_for_a_and_b() {
-        let first_unrepresentable = i32::MAX as u64;
-        let invalid = format!(
-            "chr1\t{first_unrepresentable}\t{}\n",
-            first_unrepresentable + 1
-        );
-        let b_error = subtract(&b"chr1\t0\t1\n"[..], invalid.as_bytes(), Vec::new()).unwrap_err();
-        assert!(b_error.to_string().contains("B interval"), "{b_error}");
+    fn maximum_nonzero_u64_coordinates_are_supported() {
+        let start = u64::MAX - 1;
+        let end = u64::MAX;
+        let a = format!("chr1\t{start}\t{end}\tA\n");
+        let b = format!("chr1\t{start}\t{end}\tB\n");
+        let mut output = Vec::new();
+        subtract(a.as_bytes(), b.as_bytes(), &mut output).unwrap();
+        assert!(output.is_empty());
+    }
 
-        let a_error = subtract(invalid.as_bytes(), &b"chr1\t0\t1\n"[..], Vec::new()).unwrap_err();
-        assert!(a_error.to_string().contains("A interval"), "{a_error}");
+    #[test]
+    fn maximum_zero_length_coordinate_fails_before_widening() {
+        let input = format!("chr1\t{0}\t{0}\n", u64::MAX);
+        let b_error = subtract(&b"chr1\t1\t2\n"[..], input.as_bytes(), Vec::new()).unwrap_err();
+        assert!(b_error.to_string().contains("B zero-length"), "{b_error}");
+        let a_error = subtract(input.as_bytes(), &b"chr1\t1\t2\n"[..], Vec::new()).unwrap_err();
+        assert!(a_error.to_string().contains("A zero-length"), "{a_error}");
     }
 }

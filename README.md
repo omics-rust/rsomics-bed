@@ -46,20 +46,18 @@ All operations skip blank lines, `#` comments, and every line whose bytes begin
 with lowercase `track` or `browser`, matching bedtools 2.31.1. Consequently,
 chromosome names with either lowercase prefix are interpreted as header lines.
 
-The temporarily pinned `rsomics-intervals 0.3` revision stores indexed
-coordinates in an `i32` backend. Its last safe inclusive coordinate is
-`i32::MAX - 1`, so the end-exclusive limit is `i32::MAX`. `intersect` and
-`subtract` currently enforce that boundary before every index build or query.
-The foundation now exposes recoverable checked calls; replacing the duplicate
-product guard is the next explicit compatibility change, not hidden inside
-this dependency migration. The other operations reject only zero-length
-widening outside the supported `u64` coordinate domain.
+`intersect` uses the temporarily pinned `rsomics-intervals 0.3` overlap index.
+Its checked API reports coordinates above the backend's last safe inclusive
+coordinate, `i32::MAX - 1`, instead of truncating or panicking. `subtract`
+builds a separate merged coverage map and supports the full nonzero `u64`
+coordinate domain without constructing an unused overlap tree. All operations
+reject zero-length widening outside the supported `u64` domain.
 
 `intersect` and `subtract` also intentionally reject a zero-length A or B
 record at `0-0`. bedtools 2.31.1 accepts such records, but its virtual interval
 would begin at `-1`, which cannot be represented safely by this product's
-nonnegative `u64` model or the current index backend. This is a fail-loud
-compatibility divergence, not an undocumented omission.
+nonnegative `u64` model. This is a fail-loud compatibility divergence, not an
+undocumented omission.
 
 `intersect` indexes each distinct non-empty B coordinate pair once and retains
 the original B record IDs separately, so it emits hits in B-file order and
