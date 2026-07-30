@@ -34,6 +34,12 @@ jobs:
         with:
           components: clippy,rustfmt
 
+      - name: Install Linux oracle build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libbz2-dev liblzma-dev zlib1g-dev
+
       - name: Build pinned bedtools 2.31.1 oracle
         shell: bash
         run: |
