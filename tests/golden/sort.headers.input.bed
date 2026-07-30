@@ -1,0 +1,7 @@
+track name=example
+# comment
+browser position chr1:1-100
+track1	100	200	must-also-be-skipped
+browser_alt	300	400	must-also-be-skipped
+chr2	2	3	second	0	-
+chr1	1	2	first	0	+

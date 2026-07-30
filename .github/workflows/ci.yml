@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x86_64
+            runner: ubuntu-24.04
+          - target: linux-aarch64
+            runner: ubuntu-24.04-arm
+          - target: macos-x86_64
+            runner: macos-15-intel
+          - target: macos-aarch64
+            runner: macos-15
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Rust 1.91
+        uses: dtolnay/rust-toolchain@1.91.0
+        with:
+          components: clippy,rustfmt
+
+      - name: Build pinned bedtools 2.31.1 oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/bedtools-2.31.1.tar.gz"
+          curl --fail --location --retry 3 \
+            https://github.com/arq5x/bedtools2/releases/download/v2.31.1/bedtools-2.31.1.tar.gz \
+            --output "$archive"
+          echo "fc7e660c2279b1e008b80aca0165a4a157daf4994d08a533ee925d73ce732b97  $archive" \
+            | shasum -a 256 --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/bedtools2" -j2
+          echo "$RUNNER_TEMP/bedtools2/bin" >> "$GITHUB_PATH"
+
+      - name: Verify compatibility oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(bedtools --version)" = "bedtools v2.31.1"
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Strict Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test debug
+        run: cargo test --all-features
+
+      - name: Test release
+        run: cargo test --release --all-features
+
+      - name: Verify package
+        if: matrix.target == 'linux-x86_64'
+        run: cargo package --locked

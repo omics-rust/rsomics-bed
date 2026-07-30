@@ -1,0 +1,5 @@
+chr1	100	150	regionA1	0	+
+chr1	300	400	regionA2	0	-
+chr2	100	120	regionA3	0	+
+chr2	180	200	regionA3	0	+
+chr2	500	550	regionA4	0	+

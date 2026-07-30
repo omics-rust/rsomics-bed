@@ -1,0 +1,5 @@
+chr1	10	20	B
+chr1	32	32	left-zero
+chr1	33	34	right-nonzero
+chr1	42	42	left-zero
+chr1	44	44	right-zero
