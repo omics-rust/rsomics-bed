@@ -28,37 +28,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/checkout@v6
-        with:
-          repository: omics-rust/rsomics-common
-          ref: 9f11f37c0fa48a24cae12549769f3395d9d0f19f
-          path: target/ci/rsomics-common
-      - uses: actions/checkout@v6
-        with:
-          repository: omics-rust/rsomics-help
-          ref: c615aa8b85224055faad57c86abd068aded89d06
-          path: target/ci/rsomics-help
-      - uses: actions/checkout@v6
-        with:
-          repository: omics-rust/rsomics-intervals
-          ref: 8b2f7c261afda8cf77a70f2c19cdb8d4cc207f03
-          path: target/ci/rsomics-intervals
 
       - name: Install Rust 1.91
         uses: dtolnay/rust-toolchain@1.91.0
         with:
           components: clippy,rustfmt
-
-      - name: Configure unpublished foundation revisions
-        run: |
-          mkdir -p "$RUNNER_TEMP/cargo-home"
-          cat > "$RUNNER_TEMP/cargo-home/config.toml" <<EOF
-          [patch.crates-io]
-          rsomics-common = { path = "$GITHUB_WORKSPACE/target/ci/rsomics-common" }
-          rsomics-help = { path = "$GITHUB_WORKSPACE/target/ci/rsomics-help" }
-          rsomics-intervals = { path = "$GITHUB_WORKSPACE/target/ci/rsomics-intervals" }
-          EOF
-          echo "CARGO_HOME=$RUNNER_TEMP/cargo-home" >> "$GITHUB_ENV"
 
       - name: Install Linux oracle build dependencies
         if: runner.os == 'Linux'
