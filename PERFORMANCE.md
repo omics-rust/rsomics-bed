@@ -18,15 +18,17 @@ the pinned oracle and the full test suite passes. Each release record includes
 the exact source and binary identities, fixture hashes, command flags, timing
 distribution, peak-memory method, and a per-operation decision.
 
-## 2026-07-30 representative Linux gate
+## 2026-07-31 representative Linux gate
 
 Source and tools:
 
 - `rsomics-bed` Git revision
-  `ed415eeebd9d6a3bcb34cc9cf15bcfc5f7c587cd`;
+  `e8898dbcb0db7a398fbd84f7627ad2be322f475f`;
 - release binary SHA-256
-  `8f4808840fa5a8cab88079aa617f60cef2c1196fb5dbf0edd2dd8a3f9a29ae17`;
+  `e78a4d67091ffa121d12d451c0e10526ca7effccbebd73afb7ba7ffcddbc009f`;
 - `rustc 1.91.0 (f8297e351 2025-10-28)`;
+- crates.io `rsomics-common 0.7.0`, `rsomics-help 0.4.0`, and
+  `rsomics-intervals 0.3.0`, locked to registry checksums;
 - bedtools `v2.31.1`, built from the release archive whose SHA-256 is
   `fc7e660c2279b1e008b80aca0165a4a157daf4994d08a533ee925d73ce732b97`;
 - bedtools binary SHA-256
@@ -34,9 +36,10 @@ Source and tools:
 
 The host was `dell-Precision-7920-Tower`, Ubuntu 22.04, Linux
 6.8.0-90-generic, `x86_64`, with two Intel Xeon Gold 6238R CPUs. Commands were
-bound to physical cores 48-51 on one socket. Source, Cargo home, target output,
-temporary files, fixtures, and results remained under
-`/data1/liangjy/rsomics-linux-x86_64-20260730/bed-gate`.
+bound to physical cores 48-51 on one socket. Source, target output, temporary
+files, fixtures, and results remained under
+`/data1/liangjy/rsomics-linux-x86_64-20260731/bed-gate`. The Rust toolchain and
+Cargo registry cache were reused from the preceding external-disk gate.
 
 The formal fixture has 1,000,000 A or primary records across ten chromosomes.
 B has 1,020,000 records because of the deliberate duplicates. Fixture
@@ -66,20 +69,20 @@ of the ten process high-water marks.
 
 | Operation | rsomics-bed | bedtools 2.31.1 | Speedup | RSS KiB, ours / bedtools |
 |---|---:|---:|---:|---:|
-| sort | 0.409 ± 0.006 s | 1.071 ± 0.014 s | 2.62x | 198,016 / 360,624 |
-| merge | 0.198 ± 0.004 s | 0.225 ± 0.005 s | 1.14x | 2,688 / 4,480 |
-| intersect | 1.002 ± 0.008 s | 2.615 ± 0.011 s | 2.61x | 261,140 / 344,960 |
-| subtract | 0.960 ± 0.019 s | 2.992 ± 0.017 s | 3.12x | 289,946 / 344,960 |
-| complement | 0.239 ± 0.006 s | 0.297 ± 0.007 s | 1.24x | 5,376 / 4,480 |
+| sort | 0.390 ± 0.000 s | 1.077 ± 0.016 s | 2.76x | 197,120 / 360,624 |
+| merge | 0.197 ± 0.007 s | 0.228 ± 0.004 s | 1.16x | 1,792 / 4,480 |
+| intersect | 0.672 ± 0.004 s | 2.683 ± 0.116 s | 3.99x | 114,700 / 344,960 |
+| subtract | 0.592 ± 0.009 s | 3.011 ± 0.023 s | 5.09x | 18,816 / 344,960 |
+| complement | 0.236 ± 0.007 s | 0.302 ± 0.015 s | 1.28x | 4,480 / 4,480 |
 
 All five operations pass the throughput gate on this representative workload.
-Sort, merge, intersect, and subtract also use less peak memory. Complement uses
-about 20% more peak memory but retains a strict throughput advantage.
+Sort, merge, intersect, and subtract also use less peak memory. Complement has
+equal measured peak memory and a strict throughput advantage.
 
 The raw JSON is
-`/data1/liangjy/rsomics-linux-x86_64-20260730/bed-gate/results/representative-1m.json`,
+`/data1/liangjy/rsomics-linux-x86_64-20260731/bed-gate/results/representative-1m.json`,
 SHA-256
-`277aa73ccd944cc00331f9d7b111467fca5b86ba123ab2a5f5ef187649a6bbbc`.
+`2133285863696e1b22f10aadbd69e5f80e16af235d8a2ba640cfb1d567070a46`.
 
 ## Dense-subtract scaling
 
@@ -109,10 +112,10 @@ claims.
 
 ## Remaining release gates
 
-Evidence revision `76d02dbc9c0fd549782f1e68e2b0ef5e64f13d45`
-passed exact-head CI run `30556922040` on native Linux and macOS for both
+Code revision `e8898dbcb0db7a398fbd84f7627ad2be322f475f`
+passed exact-head CI run `30598213193` on native Linux and macOS for both
 `x86_64` and `aarch64`.
 
 - native Linux `aarch64` has correctness CI but no representative performance
   host;
-- the final publication public API review remains.
+- the current public API and production hot paths passed release review.
