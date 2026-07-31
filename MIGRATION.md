@@ -36,12 +36,13 @@ the product/subcommand command tree and renders nested help directly.
 
 ## Dependency boundary
 
-`rsomics-intervals 0.3` is consumed only for its generic interval model and
-overlap index. BED parsing, headers, column preservation, zero-length policy,
-sortedness, chromosome-size validation, and output formatting remain private to
-this product. `intersect` uses the foundation's checked build/query API and
-reports coordinates beyond the backend limit. `subtract` uses a separate
-merged `u64` coverage map because it does not need an overlap tree.
+`rsomics-intervals 0.3` supplies only the validated, generic interval value
+used by the BED parser. BED parsing, headers, column preservation, indexing,
+zero-length policy, sortedness, chromosome-size validation, and output
+formatting remain private to this product. `intersect` owns the checked
+COITrees build/query adapter and reports coordinates beyond the backend limit.
+`subtract` uses a separate merged `u64` coverage map because it does not need
+an overlap tree.
 
 Distinct non-empty B coordinate pairs are indexed once and expanded back to
 their original record IDs for intersect queries. This retains duplicate

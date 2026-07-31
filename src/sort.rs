@@ -17,9 +17,9 @@ use crate::bed::read_records;
 pub fn sort(input: impl Read, output: impl Write) -> Result<()> {
     let mut records = read_records(input)?;
     records.sort_by(|left, right| {
-        left.chrom
-            .cmp(&right.chrom)
-            .then(left.start.cmp(&right.start))
+        left.chrom()
+            .cmp(right.chrom())
+            .then(left.start().cmp(&right.start()))
     });
 
     let mut output = BufWriter::new(output);

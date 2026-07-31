@@ -32,26 +32,26 @@ fn subtract_record(
     output: &mut dyn Write,
 ) -> Result<()> {
     b.overlaps(a, "A", covers)?;
-    if a.start == a.end {
-        let target = (a.start - 1, a.end + 1);
+    if a.start() == a.end() {
+        let target = (a.start() - 1, a.end() + 1);
         if covers.as_slice() != [target] {
             a.write_raw(output)?;
         }
         return Ok(());
     }
 
-    let mut cursor = a.start;
+    let mut cursor = a.start();
     for &(low, high) in covers.iter() {
         if low > cursor {
             a.write_with_coords(output, cursor, low)?;
         }
         cursor = cursor.max(high);
-        if cursor >= a.end {
+        if cursor >= a.end() {
             return Ok(());
         }
     }
-    if cursor < a.end {
-        a.write_with_coords(output, cursor, a.end)?;
+    if cursor < a.end() {
+        a.write_with_coords(output, cursor, a.end())?;
     }
     Ok(())
 }

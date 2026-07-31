@@ -46,12 +46,14 @@ All operations skip blank lines, `#` comments, and every line whose bytes begin
 with lowercase `track` or `browser`, matching bedtools 2.31.1. Consequently,
 chromosome names with either lowercase prefix are interpreted as header lines.
 
-`intersect` uses the temporarily pinned `rsomics-intervals 0.3` overlap index.
-Its checked API reports coordinates above the backend's last safe inclusive
-coordinate, `i32::MAX - 1`, instead of truncating or panicking. `subtract`
-builds a separate merged coverage map and supports the full nonzero `u64`
-coordinate domain without constructing an unused overlap tree. All operations
-reject zero-length widening outside the supported `u64` domain.
+`rsomics-intervals 0.3` supplies the validated half-open coordinate model used
+by the BED parser. `intersect` owns its COITrees index because the backend and
+its coordinate limit are product-specific policy. Coordinates above the
+backend's last safe inclusive coordinate, `i32::MAX - 1`, are reported instead
+of truncated or panicked. `subtract` builds a separate merged coverage map and
+supports the full nonzero `u64` coordinate domain without constructing an
+unused overlap tree. All operations reject zero-length widening outside the
+supported `u64` domain.
 
 `intersect` and `subtract` also intentionally reject a zero-length A or B
 record at `0-0`. bedtools 2.31.1 accepts such records, but its virtual interval
@@ -87,6 +89,5 @@ This product consolidates team-owned historical rsomics implementations listed
 in [MIGRATION.md](MIGRATION.md). Compatibility behavior is checked against
 bedtools 2.31.1 and committed golden output.
 
-bedtools is distributed under the MIT license. The interval index is provided
-through `rsomics-intervals`, whose COITrees backend is also MIT-licensed. This
-independent Rust product is licensed under MIT OR Apache-2.0.
+bedtools and COITrees are distributed under the MIT license. This independent
+Rust product is licensed under MIT OR Apache-2.0.

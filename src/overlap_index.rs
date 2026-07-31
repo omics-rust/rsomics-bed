@@ -1,13 +1,30 @@
 use std::collections::HashMap;
 use std::io::Read;
 
+use coitrees::{COITree, Interval as CoitInterval, IntervalTree};
 use rsomics_common::{Result, RsomicsError};
-use rsomics_intervals::{Interval, IntervalIndex, IntervalIndexError, IntervalSet};
 
 use crate::bed::{BedReader, BedRecord};
 
+// COITrees returns SIMD metadata by reference and scalar metadata by value.
+#[cfg(any(target_feature = "avx2", target_feature = "neon"))]
+macro_rules! meta_id {
+    ($node:ident) => {
+        *$node.metadata
+    };
+}
+
+#[cfg(not(any(target_feature = "avx2", target_feature = "neon")))]
+macro_rules! meta_id {
+    ($node:ident) => {
+        $node.metadata
+    };
+}
+
+// i32::MAX overflows the backend's SIMD layout.
+const MAX_INDEX_COORDINATE: u64 = (i32::MAX - 1) as u64;
+
 pub(crate) struct IndexedBed {
-    index: IntervalIndex,
     records: Vec<IndexedRecord>,
     chrom_ranks: HashMap<String, usize>,
     chromosomes: Vec<ChromIndex>,
@@ -27,16 +44,14 @@ impl IndexedRecord {
     }
 }
 
-#[derive(Default)]
 struct ChromIndex {
+    tree: COITree<usize, u32>,
     bounds: Vec<BoundGroup>,
     bound_ids: Vec<usize>,
     zero_ids: Vec<(u64, usize)>,
 }
 
 struct BoundGroup {
-    start: u64,
-    end: u64,
     first_id: usize,
     last_id: usize,
 }
@@ -46,39 +61,40 @@ impl IndexedBed {
         let mut reader = BedReader::new(input);
         let mut records = Vec::new();
         let mut chrom_ranks = HashMap::new();
-        let mut chrom_names = Vec::new();
         let mut pending_ids: Vec<Vec<usize>> = Vec::new();
 
         while let Some(record) = reader.next_coordinates()? {
             let (overlap_start, overlap_end) =
-                overlap_bounds(record.chrom, record.start, record.end, label)?;
-            let rank = if let Some(&rank) = chrom_ranks.get(record.chrom) {
+                overlap_bounds(record.chrom(), record.start(), record.end(), label)?;
+            let rank = if let Some(&rank) = chrom_ranks.get(record.chrom()) {
                 rank
             } else {
-                let rank = chrom_names.len();
-                chrom_ranks.insert(record.chrom.to_owned(), rank);
-                chrom_names.push(record.chrom.to_owned());
+                let rank = pending_ids.len();
+                chrom_ranks.insert(record.chrom().to_owned(), rank);
                 pending_ids.push(Vec::new());
                 rank
             };
             let id = records.len();
             records.push(IndexedRecord {
-                start: record.start,
-                end: record.end,
+                start: record.start(),
+                end: record.end(),
                 overlap_start,
                 overlap_end,
             });
             pending_ids[rank].push(id);
         }
 
-        let mut set = IntervalSet::new();
-        let mut chromosomes = Vec::with_capacity(chrom_names.len());
-        for (rank, ids) in pending_ids.iter_mut().enumerate() {
+        let mut chromosomes = Vec::with_capacity(pending_ids.len());
+        for ids in &mut pending_ids {
             ids.sort_unstable_by_key(|&id| {
                 let record = records[id];
                 (record.start, record.end, id)
             });
-            let mut chromosome = ChromIndex::default();
+
+            let mut nodes = Vec::new();
+            let mut bounds = Vec::new();
+            let mut bound_ids = Vec::new();
+            let mut zero_ids = Vec::new();
             let mut cursor = 0;
             while cursor < ids.len() {
                 let record = records[ids[cursor]];
@@ -90,35 +106,31 @@ impl IndexedBed {
                     }
                     group_end += 1;
                 }
+
                 if record.start == record.end {
-                    chromosome
-                        .zero_ids
-                        .extend(ids[cursor..group_end].iter().map(|&id| (record.start, id)));
+                    zero_ids.extend(ids[cursor..group_end].iter().map(|&id| (record.start, id)));
                 } else {
-                    let first_id = chromosome.bound_ids.len();
-                    chromosome
-                        .bound_ids
-                        .extend_from_slice(&ids[cursor..group_end]);
-                    let last_id = chromosome.bound_ids.len();
-                    chromosome.bounds.push(BoundGroup {
-                        start: record.start,
-                        end: record.end,
-                        first_id,
-                        last_id,
-                    });
-                    set.push(
-                        Interval::new(chrom_names[rank].clone(), record.start, record.end)
-                            .expect("BED parser rejects inverted intervals"),
-                    );
+                    let first_id = bound_ids.len();
+                    bound_ids.extend_from_slice(&ids[cursor..group_end]);
+                    let last_id = bound_ids.len();
+                    let group_id = bounds.len();
+                    bounds.push(BoundGroup { first_id, last_id });
+                    let (first, last) = index_bounds(record.start, record.end, label)?
+                        .expect("non-empty parsed BED interval has inclusive index bounds");
+                    nodes.push(CoitInterval::new(first, last, group_id));
                 }
                 cursor = group_end;
             }
-            chromosomes.push(chromosome);
+
+            chromosomes.push(ChromIndex {
+                tree: COITree::new(&nodes),
+                bounds,
+                bound_ids,
+                zero_ids,
+            });
         }
 
-        let index = IntervalIndex::try_build(&set).map_err(|error| index_error(label, error))?;
         Ok(Self {
-            index,
             records,
             chrom_ranks,
             chromosomes,
@@ -136,9 +148,9 @@ impl IndexedBed {
         ids: &mut Vec<usize>,
     ) -> Result<()> {
         ids.clear();
-        let (start, end) = overlap_bounds(&record.chrom, record.start, record.end, label)?;
-        self.append_nonzero_ids(&record.chrom, start, end, label, ids)?;
-        self.append_zero_ids(&record.chrom, start, end, ids);
+        let (start, end) = overlap_bounds(record.chrom(), record.start(), record.end(), label)?;
+        self.append_nonzero_ids(record.chrom(), start, end, label, ids)?;
+        self.append_zero_ids(record.chrom(), start, end, ids);
         ids.sort_unstable();
         Ok(())
     }
@@ -154,20 +166,15 @@ impl IndexedBed {
         let Some(&rank) = self.chrom_ranks.get(chrom) else {
             return Ok(());
         };
+        let Some((first, last)) = index_bounds(start, end, label)? else {
+            return Ok(());
+        };
         let chromosome = &self.chromosomes[rank];
-        self.index
-            .try_for_each_overlap(chrom, start, end, |hit| {
-                let group = chromosome
-                    .bounds
-                    .binary_search_by(|candidate| {
-                        (candidate.start, candidate.end).cmp(&(hit.start, hit.end))
-                    })
-                    .ok()
-                    .map(|index| &chromosome.bounds[index])
-                    .expect("index coordinates originate from the bounds map");
-                ids.extend_from_slice(&chromosome.bound_ids[group.first_id..group.last_id]);
-            })
-            .map_err(|error| index_error(label, error))
+        chromosome.tree.query(first, last, |node| {
+            let group = &chromosome.bounds[meta_id!(node)];
+            ids.extend_from_slice(&chromosome.bound_ids[group.first_id..group.last_id]);
+        });
+        Ok(())
     }
 
     fn append_zero_ids(&self, chrom: &str, low: u64, high: u64, ids: &mut Vec<usize>) {
@@ -193,12 +200,12 @@ impl CoverageBed {
         let mut coverage: Vec<Vec<(u64, u64)>> = Vec::new();
 
         while let Some(record) = reader.next_coordinates()? {
-            let span = overlap_bounds(record.chrom, record.start, record.end, label)?;
-            let rank = if let Some(&rank) = chrom_ranks.get(record.chrom) {
+            let span = overlap_bounds(record.chrom(), record.start(), record.end(), label)?;
+            let rank = if let Some(&rank) = chrom_ranks.get(record.chrom()) {
                 rank
             } else {
                 let rank = coverage.len();
-                chrom_ranks.insert(record.chrom.to_owned(), rank);
+                chrom_ranks.insert(record.chrom().to_owned(), rank);
                 coverage.push(Vec::new());
                 rank
             };
@@ -233,8 +240,8 @@ impl CoverageBed {
         overlaps: &mut Vec<(u64, u64)>,
     ) -> Result<()> {
         overlaps.clear();
-        let target = overlap_bounds(&record.chrom, record.start, record.end, label)?;
-        let Some(&rank) = self.chrom_ranks.get(&record.chrom) else {
+        let target = overlap_bounds(record.chrom(), record.start(), record.end(), label)?;
+        let Some(&rank) = self.chrom_ranks.get(record.chrom()) else {
             return Ok(());
         };
         let coverage = &self.coverage[rank];
@@ -268,6 +275,17 @@ fn overlap_bounds(chrom: &str, start: u64, end: u64, label: &str) -> Result<(u64
     }
 }
 
-fn index_error(label: &str, error: IntervalIndexError) -> RsomicsError {
-    RsomicsError::InvalidInput(format!("{label} interval index: {error}"))
+fn index_bounds(start: u64, end: u64, label: &str) -> Result<Option<(i32, i32)>> {
+    if start >= end {
+        return Ok(None);
+    }
+    let last = end - 1;
+    for coordinate in [start, last] {
+        if coordinate > MAX_INDEX_COORDINATE {
+            return Err(RsomicsError::InvalidInput(format!(
+                "{label} interval index: coordinate {coordinate} exceeds the interval-index backend maximum {MAX_INDEX_COORDINATE}"
+            )));
+        }
+    }
+    Ok(Some((start as i32, last as i32)))
 }

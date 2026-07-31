@@ -382,6 +382,7 @@ name = "rsomics-bed"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "coitrees",
  "criterion",
  "rsomics-common",
  "rsomics-help",
@@ -412,9 +413,6 @@ dependencies = [
 name = "rsomics-intervals"
 version = "0.3.0"
 dependencies = [
- "coitrees",
- "rsomics-common",
- "serde",
  "thiserror",
 ]
 

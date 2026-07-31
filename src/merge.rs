@@ -25,14 +25,16 @@ pub fn merge(input: impl Read, output: impl Write) -> Result<()> {
 
     while let Some(record) = reader.next_record()? {
         match current.as_mut() {
-            Some(cluster) if cluster.chrom == record.chrom => {
-                if record.start < last_start {
+            Some(cluster) if cluster.chrom == record.chrom() => {
+                if record.start() < last_start {
                     return Err(RsomicsError::InvalidInput(format!(
                         "merge input is not sorted: {}:{} follows start {}",
-                        record.chrom, record.start, last_start
+                        record.chrom(),
+                        record.start(),
+                        last_start
                     )));
                 }
-                last_start = record.start;
+                last_start = record.start();
                 if cluster.absorb(continuation_bounds(&record)?) {
                     continue;
                 }
@@ -42,17 +44,17 @@ pub fn merge(input: impl Read, output: impl Write) -> Result<()> {
             Some(cluster) => {
                 cluster.write(&mut output)?;
                 closed.insert(cluster.chrom.clone());
-                if closed.contains(&record.chrom) {
+                if closed.contains(record.chrom()) {
                     return Err(RsomicsError::InvalidInput(format!(
                         "merge input is not grouped by chromosome: {:?} reappears",
-                        record.chrom
+                        record.chrom()
                     )));
                 }
-                last_start = record.start;
+                last_start = record.start();
                 *cluster = Cluster::from_record(&record, virtual_bounds(&record, "merge")?);
             }
             None => {
-                last_start = record.start;
+                last_start = record.start();
                 current = Some(Cluster::from_record(
                     &record,
                     virtual_bounds(&record, "merge")?,
@@ -67,16 +69,18 @@ pub fn merge(input: impl Read, output: impl Write) -> Result<()> {
 }
 
 fn continuation_bounds(record: &BedRecord) -> Result<(u64, u64)> {
-    if record.start != record.end {
-        return Ok((record.start, record.end));
+    if record.start() != record.end() {
+        return Ok((record.start(), record.end()));
     }
-    let high = record.end.checked_add(1).ok_or_else(|| {
+    let high = record.end().checked_add(1).ok_or_else(|| {
         RsomicsError::InvalidInput(format!(
             "merge interval {}:{}-{} widens beyond u64",
-            record.chrom, record.start, record.end
+            record.chrom(),
+            record.start(),
+            record.end()
         ))
     })?;
-    Ok((record.start.saturating_sub(1), high))
+    Ok((record.start().saturating_sub(1), high))
 }
 
 struct Cluster {
@@ -89,10 +93,10 @@ struct Cluster {
 impl Cluster {
     fn from_record(record: &BedRecord, (low, high): (u64, u64)) -> Self {
         Self {
-            chrom: record.chrom.clone(),
+            chrom: record.chrom().to_owned(),
             low,
             high,
-            single_zero: (record.start == record.end).then_some((record.start, record.end)),
+            single_zero: (record.start() == record.end()).then_some((record.start(), record.end())),
         }
     }
 

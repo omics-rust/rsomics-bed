@@ -2,17 +2,28 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 
 use rsomics_common::{Context, Result, RsomicsError};
+use rsomics_intervals::Interval;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct BedRecord {
-    pub(crate) chrom: String,
-    pub(crate) start: u64,
-    pub(crate) end: u64,
+    interval: Interval,
     raw: Vec<u8>,
     suffix_start: Option<usize>,
 }
 
 impl BedRecord {
+    pub(crate) fn chrom(&self) -> &str {
+        self.interval.chrom()
+    }
+
+    pub(crate) fn start(&self) -> u64 {
+        self.interval.start()
+    }
+
+    pub(crate) fn end(&self) -> u64 {
+        self.interval.end()
+    }
+
     pub(crate) fn write_raw(&self, output: &mut dyn Write) -> Result<()> {
         output
             .write_all(&self.raw)
@@ -26,7 +37,7 @@ impl BedRecord {
         start: u64,
         end: u64,
     ) -> Result<()> {
-        write!(output, "{}\t{start}\t{end}", self.chrom).rs_context("writing BED record")?;
+        write!(output, "{}\t{start}\t{end}", self.chrom()).rs_context("writing BED record")?;
         if let Some(index) = self.suffix_start {
             output
                 .write_all(&self.raw[index..])
@@ -43,15 +54,25 @@ pub(crate) struct BedReader<R: BufRead> {
 }
 
 pub(crate) struct BedCoordinates<'a> {
-    pub(crate) chrom: &'a str,
-    pub(crate) start: u64,
-    pub(crate) end: u64,
+    interval: Interval<&'a str>,
+}
+
+impl BedCoordinates<'_> {
+    pub(crate) fn chrom(&self) -> &str {
+        self.interval.chrom()
+    }
+
+    pub(crate) fn start(&self) -> u64 {
+        self.interval.start()
+    }
+
+    pub(crate) fn end(&self) -> u64 {
+        self.interval.end()
+    }
 }
 
 struct ParsedRecord<'a> {
-    chrom: &'a str,
-    start: u64,
-    end: u64,
+    interval: Interval<&'a str>,
     raw: &'a [u8],
     suffix_start: Option<usize>,
 }
@@ -68,20 +89,24 @@ impl<R: Read> BedReader<BufReader<R>> {
 
 impl<R: BufRead> BedReader<R> {
     pub(crate) fn next_record(&mut self) -> Result<Option<BedRecord>> {
-        Ok(self.next_parsed()?.map(|record| BedRecord {
-            chrom: record.chrom.to_owned(),
-            start: record.start,
-            end: record.end,
-            raw: record.raw.to_vec(),
-            suffix_start: record.suffix_start,
+        Ok(self.next_parsed()?.map(|record| {
+            let interval = Interval::new(
+                record.interval.chrom().to_string(),
+                record.interval.start(),
+                record.interval.end(),
+            )
+            .expect("parsed BED interval remains valid when its chromosome is owned");
+            BedRecord {
+                interval,
+                raw: record.raw.to_vec(),
+                suffix_start: record.suffix_start,
+            }
         }))
     }
 
     pub(crate) fn next_coordinates(&mut self) -> Result<Option<BedCoordinates<'_>>> {
         Ok(self.next_parsed()?.map(|record| BedCoordinates {
-            chrom: record.chrom,
-            start: record.start,
-            end: record.end,
+            interval: record.interval,
         }))
     }
 
@@ -156,16 +181,14 @@ fn parse_record(line: &[u8], line_number: usize) -> Result<ParsedRecord<'_>> {
         &line[second_tab + 1..index]
     });
     let end = parse_u64(end_bytes, &context, "end")?;
-    if start > end {
-        return Err(invalid(format!(
+    let interval = Interval::new(chrom, start, end).map_err(|_| {
+        invalid(format!(
             "BED line {line_number}: start {start} is greater than end {end}"
-        )));
-    }
+        ))
+    })?;
 
     Ok(ParsedRecord {
-        chrom,
-        start,
-        end,
+        interval,
         raw: line,
         suffix_start: third_tab,
     })
@@ -298,19 +321,23 @@ pub(crate) fn invalid(message: impl Into<String>) -> RsomicsError {
 }
 
 pub(crate) fn virtual_bounds(record: &BedRecord, operation: &str) -> Result<(u64, u64)> {
-    if record.start != record.end {
-        return Ok((record.start, record.end));
+    if record.start() != record.end() {
+        return Ok((record.start(), record.end()));
     }
-    let low = record.start.checked_sub(1).ok_or_else(|| {
+    let low = record.start().checked_sub(1).ok_or_else(|| {
         invalid(format!(
             "{operation} zero-length interval {}:{}-{} widens below coordinate zero",
-            record.chrom, record.start, record.end
+            record.chrom(),
+            record.start(),
+            record.end()
         ))
     })?;
-    let high = record.end.checked_add(1).ok_or_else(|| {
+    let high = record.end().checked_add(1).ok_or_else(|| {
         invalid(format!(
             "{operation} zero-length interval {}:{}-{} widens beyond u64",
-            record.chrom, record.start, record.end
+            record.chrom(),
+            record.start(),
+            record.end()
         ))
     })?;
     Ok((low, high))
@@ -346,7 +373,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(records.len(), 1);
-        assert_eq!(records[0].chrom, "Track");
+        assert_eq!(records[0].chrom(), "Track");
     }
 
     #[test]

@@ -24,7 +24,7 @@ pub fn intersect(a_input: impl Read, b_input: impl Read, output: impl Write) -> 
     let mut candidate_ids = Vec::new();
 
     while let Some(record) = a.next_record()? {
-        if record.start == record.end {
+        if record.start() == record.end() {
             emit_zero_length_a(&record, &b, &mut candidate_ids, &mut output)?;
         } else {
             emit_nonzero_a(&record, &b, &mut candidate_ids, &mut output)?;
@@ -57,9 +57,9 @@ fn emit_nonzero_a(
         let candidate = b.record(id);
         let (low, high) = if candidate.start == candidate.end {
             let (b_low, b_high) = candidate.virtual_bounds();
-            (a.start.max(b_low), a.end.min(b_high))
+            (a.start().max(b_low), a.end().min(b_high))
         } else {
-            (a.start.max(candidate.start), a.end.min(candidate.end))
+            (a.start().max(candidate.start), a.end().min(candidate.end))
         };
         if low < high {
             a.write_with_coords(output, low, high)?;

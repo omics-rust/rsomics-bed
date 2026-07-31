@@ -26,40 +26,44 @@ pub fn complement(input: impl Read, genome: &Genome, output: impl Write) -> Resu
     let mut last_start = 0_u64;
 
     while let Some(record) = reader.next_record()? {
-        let rank = genome.rank(&record.chrom).ok_or_else(|| {
+        let rank = genome.rank(record.chrom()).ok_or_else(|| {
             RsomicsError::InvalidInput(format!(
                 "complement input chromosome {:?} is absent from the genome file",
-                record.chrom
+                record.chrom()
             ))
         })?;
-        let size = genome.size(&record.chrom).ok_or_else(|| {
+        let size = genome.size(record.chrom()).ok_or_else(|| {
             RsomicsError::InvalidInput(format!(
                 "complement input chromosome {:?} is absent from the genome file",
-                record.chrom
+                record.chrom()
             ))
         })?;
-        if record.end > size {
+        if record.end() > size {
             return Err(RsomicsError::InvalidInput(format!(
                 "complement interval {}:{}-{} exceeds chromosome size {size}",
-                record.chrom, record.start, record.end
+                record.chrom(),
+                record.start(),
+                record.end()
             )));
         }
 
         match current_chrom.as_deref() {
-            Some(chrom) if chrom == record.chrom => {
-                if record.start < last_start {
+            Some(chrom) if chrom == record.chrom() => {
+                if record.start() < last_start {
                     return Err(RsomicsError::InvalidInput(format!(
                         "complement input is not sorted: {}:{} follows start {}",
-                        record.chrom, record.start, last_start
+                        record.chrom(),
+                        record.start(),
+                        last_start
                     )));
                 }
             }
             Some(chrom) => {
                 closed.insert(chrom.to_owned());
-                if closed.contains(&record.chrom) {
+                if closed.contains(record.chrom()) {
                     return Err(RsomicsError::InvalidInput(format!(
                         "complement input chromosome {:?} reappears",
-                        record.chrom
+                        record.chrom()
                     )));
                 }
                 let previous_rank = current_rank.ok_or_else(|| {
@@ -70,24 +74,26 @@ pub fn complement(input: impl Read, genome: &Genome, output: impl Write) -> Resu
                 if rank < previous_rank {
                     return Err(RsomicsError::InvalidInput(format!(
                         "complement input chromosome {:?} is out of genome-file order",
-                        record.chrom
+                        record.chrom()
                     )));
                 }
-                current_chrom = Some(record.chrom.clone());
+                current_chrom = Some(record.chrom().to_owned());
                 current_rank = Some(rank);
             }
             None => {
-                current_chrom = Some(record.chrom.clone());
+                current_chrom = Some(record.chrom().to_owned());
                 current_rank = Some(rank);
             }
         }
-        last_start = record.start;
+        last_start = record.start();
 
         let (low, high) = virtual_bounds(&record, "complement")?;
         if high > size {
             return Err(RsomicsError::InvalidInput(format!(
                 "widened zero-length interval {}:{}-{} exceeds chromosome size {size}",
-                record.chrom, record.start, record.end
+                record.chrom(),
+                record.start(),
+                record.end()
             )));
         }
         match by_chrom[rank].last_mut() {
