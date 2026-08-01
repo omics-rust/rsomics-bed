@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use std::process;
 
 use clap::{Args, Parser, Subcommand};
-use rsomics_common::{OutputArgs, Result, RsomicsError, ToolMeta, run as run_tool};
+use rsomics_common::{OutputArgs, Result, RsomicsError, ToolMeta, run as run_tool, write_output};
 
-use crate::io::{open_input, with_output};
+use crate::io::open_input;
 use crate::{complement, intersect, merge, read_genome, sort, subtract};
 
 const META: ToolMeta = ToolMeta {
@@ -102,13 +102,13 @@ fn execute(cli: Cli) -> Result<()> {
             require_named_json_output(json, args.output.as_deref())?;
             reject_output_alias(args.output.as_deref(), [args.input.as_deref()])?;
             let input = open_input(args.input.as_deref())?;
-            with_output(args.output.as_deref(), |output| sort::sort(input, output))
+            write_output(args.output.as_deref(), |output| sort::sort(input, output))
         }
         Command::Merge(args) => {
             require_named_json_output(json, args.output.as_deref())?;
             reject_output_alias(args.output.as_deref(), [args.input.as_deref()])?;
             let input = open_input(args.input.as_deref())?;
-            with_output(args.output.as_deref(), |output| merge::merge(input, output))
+            write_output(args.output.as_deref(), |output| merge::merge(input, output))
         }
         Command::Intersect(args) => {
             require_named_json_output(json, args.output.as_deref())?;
@@ -119,7 +119,7 @@ fn execute(cli: Cli) -> Result<()> {
             )?;
             let a = open_input(Some(&args.a))?;
             let b = open_input(Some(&args.b))?;
-            with_output(args.output.as_deref(), |output| {
+            write_output(args.output.as_deref(), |output| {
                 intersect::intersect(a, b, output)
             })
         }
@@ -132,7 +132,7 @@ fn execute(cli: Cli) -> Result<()> {
             )?;
             let a = open_input(Some(&args.a))?;
             let b = open_input(Some(&args.b))?;
-            with_output(args.output.as_deref(), |output| {
+            write_output(args.output.as_deref(), |output| {
                 subtract::subtract(a, b, output)
             })
         }
@@ -146,7 +146,7 @@ fn execute(cli: Cli) -> Result<()> {
             let input = open_input(args.input.as_deref())?;
             let genome_input = open_input(Some(&args.genome))?;
             let genome = read_genome(genome_input)?;
-            with_output(args.output.as_deref(), |output| {
+            write_output(args.output.as_deref(), |output| {
                 complement::complement(input, &genome, output)
             })
         }
