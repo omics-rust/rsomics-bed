@@ -1,11 +1,13 @@
 //! Command-line parsing and dispatch for the product binary.
 
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 
 use clap::{Args, Parser, Subcommand};
-use rsomics_common::{OutputArgs, Result, RsomicsError, ToolMeta, run as run_tool, write_output};
+use rsomics_common::{
+    OutputArgs, Result, RsomicsError, ToolMeta, reject_output_alias as reject_path_alias,
+    run as run_tool, write_output,
+};
 
 use crate::io::open_input;
 use crate::{complement, intersect, merge, read_genome, sort, subtract};
@@ -185,30 +187,10 @@ fn reject_output_alias<'a>(
     output: Option<&Path>,
     inputs: impl IntoIterator<Item = Option<&'a Path>>,
 ) -> Result<()> {
-    let Some(output) = output.filter(|path| *path != Path::new("-")) else {
+    let Some(output) = output else {
         return Ok(());
     };
-    if inputs
-        .into_iter()
-        .flatten()
-        .filter(|path| *path != Path::new("-"))
-        .any(|input| paths_alias(input, output))
-    {
-        return Err(RsomicsError::ConfigError(format!(
-            "output {} is also an input path",
-            output.display()
-        )));
-    }
-    Ok(())
-}
-
-fn paths_alias(left: &Path, right: &Path) -> bool {
-    left == right
-        || same_file::is_same_file(left, right).unwrap_or(false)
-        || matches!(
-            (fs::canonicalize(left), fs::canonicalize(right)),
-            (Ok(left), Ok(right)) if left == right
-        )
+    reject_path_alias(output, inputs.into_iter().flatten())
 }
 
 #[cfg(test)]

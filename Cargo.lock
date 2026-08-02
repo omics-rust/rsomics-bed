@@ -387,18 +387,18 @@ dependencies = [
  "rsomics-common",
  "rsomics-help",
  "rsomics-intervals",
- "same-file",
  "serde_json",
  "tempfile",
 ]
 
 [[package]]
 name = "rsomics-common"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a69695dae27897693c49ebedd96355dc9a5decb9f21956f0e8d9c5ce135a5ec"
+checksum = "a4a177d3bda6bd699e8f7449c0c414c64081a468dcdcfe7bc2bbacc6ff56cae1"
 dependencies = [
  "clap",
+ "same-file",
  "serde",
  "serde_json",
  "tempfile",
