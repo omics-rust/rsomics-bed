@@ -1,7 +1,7 @@
 [package]
 name = "rsomics-bed"
 version = "0.1.0"
-description = "Coherent BED interval operations for sorting, merging, intersection, subtraction, and complement"
+description = "High-performance BED interval algebra, clustering, and neighborhood queries"
 edition = "2024"
 rust-version = "1.91"
 license = "MIT OR Apache-2.0"

@@ -14,6 +14,14 @@ The initial product slice was reconstructed from these clean local revisions on
 All five historical worktrees were clean during inspection. Their repositories
 remain unchanged.
 
+The 0.2 relation slice used these additional clean historical revisions:
+
+| Operation | Historical repository | Revision | Disposition |
+|---|---|---|---|
+| cluster | `rsomics-bed-cluster` | `b63b75567ba729c016a4baabbbc3bb28bad0718e` | retained the sorted sweep and oracle cases; replaced its parser, CLI, chromosome allocation, and comments |
+| window | `rsomics-bed-window` | `875459ee2f793505d8256d958bb634e36a4ab19a` | retained fixtures and benchmark shape only; rebuilt parsing, indexing, output modes, and CLI |
+| closest | `rsomics-bed-closest` | `e85ed1339165d2552f86223190975175cbe4318a` | retained corrected distance, zero-length, tie, and no-hit cases; replaced the permissive parser and full B scan |
+
 ## Evidence retained
 
 - sort: unsorted input and committed bedtools-sorted output;
@@ -26,6 +34,14 @@ remain unchanged.
   explicit origin-zero divergence test;
 - complement: ordinary, zero-length, unknown-chromosome, inverted, and
   unsorted fixtures.
+- cluster: distance, book-end, same-strand ordering, malformed strand, and
+  sortedness fixtures;
+- window: symmetric, asymmetric, strand-relative, strand-filtered, duplicate,
+  zero-length, and all four report-mode fixtures;
+- closest: overlap, left/right tie, signed orientation, filtering, placeholder,
+  zero-length, and all/first/last fixtures;
+- all three relation operations: deterministic generated differentials over
+  every declared option family and one-million-record release workloads;
 - all five operations: seeded random differentials with duplicates,
   zero-length features, unordered inputs, and multiple chromosomes, plus a
   one-million-record end-to-end output and performance comparison with the
@@ -39,10 +55,11 @@ the product/subcommand command tree and renders nested help directly.
 `rsomics-intervals 0.3` supplies only the validated, generic interval value
 used by the BED parser. BED parsing, headers, column preservation, indexing,
 zero-length policy, sortedness, chromosome-size validation, and output
-formatting remain private to this product. `intersect` owns the checked
-COITrees build/query adapter and reports coordinates beyond the backend limit.
-`subtract` uses a separate merged `u64` coverage map because it does not need
-an overlap tree.
+formatting remain private to this product. `intersect`, `window`, and `closest`
+share one checked product-private COITrees core; the relation wrapper adds
+contiguous raw B storage and directional record order without exposing BED
+policy through a foundation. `subtract` uses a separate merged `u64` coverage
+map because it does not need an overlap tree.
 
 Distinct non-empty B coordinate pairs are indexed once and expanded back to
 their original record IDs for intersect queries. This retains duplicate
@@ -50,6 +67,12 @@ multiplicity and B-file output order without the historical per-A
 chromosome-wide scan. Subtract builds a separate per-chromosome union of B's
 virtual coverage, so dense distinct overlaps are merged once rather than
 expanded and re-sorted for every A record.
+
+Relation B input is retained as one byte buffer rather than one allocated
+record object per row. `window` adds file-order range queries; `closest` adds
+start/end directional orders and stops each direction after the best eligible
+distance is exceeded. This replaces the historical eager strings and per-A
+full scans without creating another public crate.
 
 ## Intentional strictness
 
