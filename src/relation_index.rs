@@ -1,16 +1,17 @@
-use std::collections::HashMap;
 use std::io::Read;
+use std::ops::Range;
 
-use rsomics_common::Result;
+use rsomics_common::{Context, Result};
 
-use crate::bed::{BedReader, BedRecord, Strand, invalid};
+use crate::bed::{BedSliceReader, Strand, invalid, required_field, required_strand};
 use crate::interval_index::{IndexedInterval, IntervalIndex, IntervalIndexBuilder};
 
 pub(crate) struct RelationBed {
-    records: Vec<BedRecord>,
+    raw: Vec<u8>,
+    raw_ranges: Vec<Range<usize>>,
+    line_numbers: Vec<usize>,
     index: IntervalIndex,
     field_count: usize,
-    chrom_ranks: HashMap<String, usize>,
     chromosomes: Vec<ChromOrder>,
 }
 
@@ -19,14 +20,44 @@ struct ChromOrder {
     end_ids: Vec<usize>,
 }
 
+pub(crate) struct RelationRecord<'a> {
+    raw: &'a [u8],
+    line_number: usize,
+}
+
+impl<'a> RelationRecord<'a> {
+    pub(crate) fn raw(&self) -> &'a [u8] {
+        self.raw
+    }
+
+    pub(crate) fn name(&self, label: &str) -> Result<&'a [u8]> {
+        required_field(self.raw, self.line_number, 3, label, "name")
+    }
+
+    pub(crate) fn strand(&self, label: &str) -> Result<Strand> {
+        required_strand(self.raw, self.line_number, label)
+    }
+
+    #[cfg(test)]
+    fn write_raw(&self, output: &mut dyn std::io::Write) -> Result<()> {
+        output
+            .write_all(self.raw)
+            .rs_context("writing BED record")?;
+        output.write_all(b"\n").rs_context("writing BED record")
+    }
+}
+
 impl RelationBed {
-    pub(crate) fn load(input: impl Read, label: &str) -> Result<Self> {
-        let mut reader = BedReader::new(input);
+    pub(crate) fn load(mut input: impl Read, label: &str) -> Result<Self> {
+        let mut raw = Vec::new();
+        input
+            .read_to_end(&mut raw)
+            .rs_context(format!("reading {label} BED input"))?;
+        let mut reader = BedSliceReader::new(&raw);
         let mut builder = IntervalIndexBuilder::new();
-        let mut records = Vec::new();
+        let mut raw_ranges = Vec::new();
+        let mut line_numbers = Vec::new();
         let mut field_width = None;
-        let mut chrom_ranks = HashMap::new();
-        let mut pending_ids: Vec<Vec<usize>> = Vec::new();
 
         while let Some(record) = reader.next_record()? {
             let count = record.field_count();
@@ -41,30 +72,15 @@ impl RelationBed {
                 field_width = Some((count, record.line_number()));
             }
 
-            let rank = if let Some(&rank) = chrom_ranks.get(record.chrom()) {
-                rank
-            } else {
-                let rank = pending_ids.len();
-                chrom_ranks.insert(record.chrom().to_owned(), rank);
-                pending_ids.push(Vec::new());
-                rank
-            };
-            let id = builder.push(record.chrom(), record.start(), record.end(), label)?;
-            pending_ids[rank].push(id);
-            records.push(record);
+            builder.push(record.chrom(), record.start(), record.end(), label)?;
+            raw_ranges.push(record.raw_range());
+            line_numbers.push(record.line_number());
         }
-
-        let index = builder.finish(label)?;
-        let chromosomes = pending_ids
+        let (index, start_orders) = builder.finish_with_start_order(label)?;
+        let chromosomes = start_orders
             .into_iter()
-            .map(|ids| {
-                let mut start_ids = ids.clone();
-                start_ids.sort_unstable_by_key(|&id| {
-                    let interval = index.record(id);
-                    let (start, end) = interval.virtual_bounds();
-                    (start, end, id)
-                });
-                let mut end_ids = ids;
+            .map(|start_ids| {
+                let mut end_ids = start_ids.clone();
                 end_ids.sort_unstable_by_key(|&id| {
                     let interval = index.record(id);
                     let (start, end) = interval.virtual_bounds();
@@ -74,16 +90,20 @@ impl RelationBed {
             })
             .collect();
         Ok(Self {
-            records,
+            raw,
+            raw_ranges,
+            line_numbers,
             index,
             field_count: field_width.map_or(3, |(count, _)| count),
-            chrom_ranks,
             chromosomes,
         })
     }
 
-    pub(crate) fn record(&self, id: usize) -> &BedRecord {
-        &self.records[id]
+    pub(crate) fn record(&self, id: usize) -> RelationRecord<'_> {
+        RelationRecord {
+            raw: &self.raw[self.raw_ranges[id].clone()],
+            line_number: self.line_numbers[id],
+        }
     }
 
     pub(crate) fn interval(&self, id: usize) -> IndexedInterval {
@@ -95,13 +115,12 @@ impl RelationBed {
     }
 
     pub(crate) fn len(&self) -> usize {
-        self.records.len()
+        self.raw_ranges.len()
     }
 
     pub(crate) fn checked_strands(&self, label: &str) -> Result<Vec<Strand>> {
-        self.records
-            .iter()
-            .map(|record| record.strand(label))
+        (0..self.len())
+            .map(|id| self.record(id).strand(label))
             .collect()
     }
 
@@ -145,9 +164,9 @@ impl RelationBed {
     }
 
     fn chromosome(&self, chrom: &str) -> Option<&ChromOrder> {
-        self.chrom_ranks
-            .get(chrom)
-            .map(|&rank| &self.chromosomes[rank])
+        self.index
+            .chromosome_rank(chrom)
+            .map(|rank| &self.chromosomes[rank])
     }
 }
 
@@ -235,5 +254,24 @@ mod tests {
         );
         assert_eq!(relation.left_candidates("chr2", 10).count(), 0);
         assert_eq!(relation.right_candidates("chr2", 20).count(), 0);
+    }
+
+    #[test]
+    fn start_order_remains_monotonic_across_zero_length_widening() {
+        let relation = RelationBed::load(
+            &b"chr1\t9\t11\tspan-left\n\
+              chr1\t10\t10\tpoint\n\
+              chr1\t10\t12\tspan-right\n"[..],
+            "B",
+        )
+        .unwrap();
+        assert_eq!(
+            relation.right_candidates("chr1", 9).collect::<Vec<_>>(),
+            [0, 1, 2]
+        );
+        assert_eq!(
+            relation.right_candidates("chr1", 10).collect::<Vec<_>>(),
+            [2]
+        );
     }
 }

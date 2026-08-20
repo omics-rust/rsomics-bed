@@ -331,12 +331,18 @@ fn write_result(
     };
     for candidate in selected {
         match options.distance {
-            DistanceMode::None => a.write_joined(output, b.record(candidate.id))?,
+            DistanceMode::None => {
+                a.write_joined_raw(output, b.record(candidate.id).raw())?;
+            }
             DistanceMode::Unsigned => {
-                a.write_joined_column(output, b.record(candidate.id), candidate.unsigned)?;
+                a.write_joined_raw_column(
+                    output,
+                    b.record(candidate.id).raw(),
+                    candidate.unsigned,
+                )?;
             }
             DistanceMode::Reference | DistanceMode::A | DistanceMode::B => {
-                a.write_joined_column(output, b.record(candidate.id), candidate.signed)?;
+                a.write_joined_raw_column(output, b.record(candidate.id).raw(), candidate.signed)?;
             }
         }
     }

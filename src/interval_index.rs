@@ -35,7 +35,7 @@ impl IntervalIndexBuilder {
     }
 
     pub(crate) fn push(&mut self, chrom: &str, start: u64, end: u64, label: &str) -> Result<usize> {
-        let (overlap_start, overlap_end) = overlap_bounds(chrom, start, end, label)?;
+        overlap_bounds(chrom, start, end, label)?;
         let rank = if let Some(&rank) = self.chrom_ranks.get(chrom) {
             rank
         } else {
@@ -45,21 +45,28 @@ impl IntervalIndexBuilder {
             rank
         };
         let id = self.records.len();
-        self.records.push(IndexedInterval {
-            start,
-            end,
-            overlap_start,
-            overlap_end,
-        });
+        self.records.push(IndexedInterval { start, end });
         self.pending_ids[rank].push(id);
         Ok(id)
     }
 
-    pub(crate) fn finish(mut self, label: &str) -> Result<IntervalIndex> {
-        let mut chromosomes = Vec::with_capacity(self.pending_ids.len());
-        for ids in &mut self.pending_ids {
+    pub(crate) fn finish(self, label: &str) -> Result<IntervalIndex> {
+        self.finish_with_start_order(label).map(|(index, _)| index)
+    }
+
+    pub(crate) fn finish_with_start_order(
+        self,
+        label: &str,
+    ) -> Result<(IntervalIndex, Vec<Vec<usize>>)> {
+        let Self {
+            records,
+            chrom_ranks,
+            mut pending_ids,
+        } = self;
+        let mut chromosomes = Vec::with_capacity(pending_ids.len());
+        for ids in &mut pending_ids {
             ids.sort_unstable_by_key(|&id| {
-                let record = self.records[id];
+                let record = records[id];
                 (record.start, record.end, id)
             });
 
@@ -69,10 +76,10 @@ impl IntervalIndexBuilder {
             let mut zero_ids = Vec::new();
             let mut cursor = 0;
             while cursor < ids.len() {
-                let record = self.records[ids[cursor]];
+                let record = records[ids[cursor]];
                 let mut group_end = cursor + 1;
                 while group_end < ids.len() {
-                    let candidate = self.records[ids[group_end]];
+                    let candidate = records[ids[group_end]];
                     if (candidate.start, candidate.end) != (record.start, record.end) {
                         break;
                     }
@@ -102,11 +109,14 @@ impl IntervalIndexBuilder {
             });
         }
 
-        Ok(IntervalIndex {
-            records: self.records,
-            chrom_ranks: self.chrom_ranks,
-            chromosomes,
-        })
+        Ok((
+            IntervalIndex {
+                records,
+                chrom_ranks,
+                chromosomes,
+            },
+            pending_ids,
+        ))
     }
 }
 
@@ -120,13 +130,15 @@ pub(crate) struct IntervalIndex {
 pub(crate) struct IndexedInterval {
     pub(crate) start: u64,
     pub(crate) end: u64,
-    overlap_start: u64,
-    overlap_end: u64,
 }
 
 impl IndexedInterval {
     pub(crate) fn virtual_bounds(self) -> (u64, u64) {
-        (self.overlap_start, self.overlap_end)
+        if self.start == self.end {
+            (self.start - 1, self.end + 1)
+        } else {
+            (self.start, self.end)
+        }
     }
 }
 
@@ -143,6 +155,10 @@ struct BoundGroup {
 }
 
 impl IntervalIndex {
+    pub(crate) fn chromosome_rank(&self, chrom: &str) -> Option<usize> {
+        self.chrom_ranks.get(chrom).copied()
+    }
+
     pub(crate) fn record(&self, id: usize) -> IndexedInterval {
         self.records[id]
     }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::io::{BufRead, BufReader, Read, Write};
+use std::ops::Range;
 
 use rsomics_common::{Context, Result, RsomicsError};
 use rsomics_intervals::Interval;
@@ -32,48 +33,16 @@ impl BedRecord {
         self.interval.end()
     }
 
-    pub(crate) fn line_number(&self) -> usize {
-        self.line_number
-    }
-
-    pub(crate) fn field_count(&self) -> usize {
-        self.raw.split(|&byte| byte == b'\t').count()
-    }
-
     pub(crate) fn name(&self, label: &str) -> Result<&[u8]> {
         self.field(3, label, "name")
     }
 
     pub(crate) fn strand(&self, label: &str) -> Result<Strand> {
-        match self.field(5, label, "strand")? {
-            b"+" => Ok(Strand::Forward),
-            b"-" => Ok(Strand::Reverse),
-            value => Err(invalid(format!(
-                "{label} BED line {}: invalid strand {:?}",
-                self.line_number,
-                String::from_utf8_lossy(value)
-            ))),
-        }
+        required_strand(&self.raw, self.line_number, label)
     }
 
     fn field(&self, index: usize, label: &str, field: &str) -> Result<&[u8]> {
-        let value = self
-            .raw
-            .split(|&byte| byte == b'\t')
-            .nth(index)
-            .ok_or_else(|| {
-                invalid(format!(
-                    "{label} BED line {}: missing {field}",
-                    self.line_number
-                ))
-            })?;
-        if value.is_empty() {
-            return Err(invalid(format!(
-                "{label} BED line {}: empty {field}",
-                self.line_number
-            )));
-        }
-        Ok(value)
+        required_field(&self.raw, self.line_number, index, label, field)
     }
 
     pub(crate) fn write_raw(&self, output: &mut dyn Write) -> Result<()> {
@@ -98,29 +67,27 @@ impl BedRecord {
         output.write_all(b"\n").rs_context("writing BED record")
     }
 
-    pub(crate) fn write_joined(&self, output: &mut dyn Write, other: &Self) -> Result<()> {
+    pub(crate) fn write_joined_raw(&self, output: &mut dyn Write, other: &[u8]) -> Result<()> {
         self.write_joined_fields(output, other)?;
         output.write_all(b"\n").rs_context("writing BED record")
     }
 
-    pub(crate) fn write_joined_column(
+    pub(crate) fn write_joined_raw_column(
         &self,
         output: &mut dyn Write,
-        other: &Self,
+        other: &[u8],
         value: impl Display,
     ) -> Result<()> {
         self.write_joined_fields(output, other)?;
         writeln!(output, "\t{value}").rs_context("writing BED record")
     }
 
-    fn write_joined_fields(&self, output: &mut dyn Write, other: &Self) -> Result<()> {
+    fn write_joined_fields(&self, output: &mut dyn Write, other: &[u8]) -> Result<()> {
         output
             .write_all(&self.raw)
             .rs_context("writing BED record")?;
         output.write_all(b"\t").rs_context("writing BED record")?;
-        output
-            .write_all(&other.raw)
-            .rs_context("writing BED record")
+        output.write_all(other).rs_context("writing BED record")
     }
 
     pub(crate) fn write_column(&self, output: &mut dyn Write, value: impl Display) -> Result<()> {
@@ -131,10 +98,51 @@ impl BedRecord {
     }
 }
 
+pub(crate) fn required_field<'a>(
+    raw: &'a [u8],
+    line_number: usize,
+    index: usize,
+    label: &str,
+    field: &str,
+) -> Result<&'a [u8]> {
+    let value = raw
+        .split(|&byte| byte == b'\t')
+        .nth(index)
+        .ok_or_else(|| invalid(format!("{label} BED line {line_number}: missing {field}")))?;
+    if value.is_empty() {
+        return Err(invalid(format!(
+            "{label} BED line {line_number}: empty {field}"
+        )));
+    }
+    Ok(value)
+}
+
+pub(crate) fn required_strand(raw: &[u8], line_number: usize, label: &str) -> Result<Strand> {
+    match required_field(raw, line_number, 5, label, "strand")? {
+        b"+" => Ok(Strand::Forward),
+        b"-" => Ok(Strand::Reverse),
+        value => Err(invalid(format!(
+            "{label} BED line {line_number}: invalid strand {:?}",
+            String::from_utf8_lossy(value)
+        ))),
+    }
+}
+
 pub(crate) struct BedReader<R: BufRead> {
     input: R,
     line: Vec<u8>,
     line_number: usize,
+}
+
+pub(crate) struct BedSliceReader<'a> {
+    input: &'a [u8],
+    cursor: usize,
+    line_number: usize,
+}
+
+pub(crate) struct BedSliceRecord<'a> {
+    parsed: ParsedRecord<'a>,
+    raw_start: usize,
 }
 
 pub(crate) struct BedCoordinates<'a> {
@@ -169,6 +177,73 @@ impl<R: Read> BedReader<BufReader<R>> {
             line: Vec::with_capacity(256),
             line_number: 0,
         }
+    }
+}
+
+impl<'a> BedSliceReader<'a> {
+    pub(crate) fn new(input: &'a [u8]) -> Self {
+        Self {
+            input,
+            cursor: 0,
+            line_number: 0,
+        }
+    }
+
+    pub(crate) fn next_record(&mut self) -> Result<Option<BedSliceRecord<'a>>> {
+        while self.cursor < self.input.len() {
+            let raw_start = self.cursor;
+            let remaining = &self.input[raw_start..];
+            let raw_end = if let Some(offset) = remaining.iter().position(|&byte| byte == b'\n') {
+                self.cursor = raw_start + offset + 1;
+                raw_start + offset
+            } else {
+                self.cursor = self.input.len();
+                self.input.len()
+            };
+            self.line_number += 1;
+            let mut trimmed_end = raw_end;
+            while trimmed_end > raw_start && self.input[trimmed_end - 1] == b'\r' {
+                trimmed_end -= 1;
+            }
+            let raw = &self.input[raw_start..trimmed_end];
+            if is_skippable(raw) {
+                continue;
+            }
+            return parse_record(raw, self.line_number)
+                .map(|parsed| Some(BedSliceRecord { parsed, raw_start }));
+        }
+        Ok(None)
+    }
+}
+
+impl BedSliceRecord<'_> {
+    pub(crate) fn chrom(&self) -> &str {
+        self.parsed.interval.chrom()
+    }
+
+    pub(crate) fn start(&self) -> u64 {
+        self.parsed.interval.start()
+    }
+
+    pub(crate) fn end(&self) -> u64 {
+        self.parsed.interval.end()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn raw(&self) -> &[u8] {
+        self.parsed.raw
+    }
+
+    pub(crate) fn raw_range(&self) -> Range<usize> {
+        self.raw_start..self.raw_start + self.parsed.raw.len()
+    }
+
+    pub(crate) fn line_number(&self) -> usize {
+        self.parsed.line_number
+    }
+
+    pub(crate) fn field_count(&self) -> usize {
+        self.parsed.raw.split(|&byte| byte == b'\t').count()
     }
 }
 
@@ -450,6 +525,26 @@ mod tests {
     }
 
     #[test]
+    fn slice_reader_borrows_raw_records_with_physical_lines() {
+        let input = b"# header\r\nchr1\t10\t20\tfirst\r\n\nchr2\t30\t40\tlast";
+        let mut reader = BedSliceReader::new(input);
+
+        let first = reader.next_record().unwrap().unwrap();
+        assert_eq!(first.chrom(), "chr1");
+        assert_eq!((first.start(), first.end()), (10, 20));
+        assert_eq!(first.line_number(), 2);
+        assert_eq!(first.raw(), b"chr1\t10\t20\tfirst");
+        assert_eq!(&input[first.raw_range()], first.raw());
+
+        let last = reader.next_record().unwrap().unwrap();
+        assert_eq!(last.chrom(), "chr2");
+        assert_eq!(last.line_number(), 4);
+        assert_eq!(last.raw(), b"chr2\t30\t40\tlast");
+        assert_eq!(&input[last.raw_range()], last.raw());
+        assert!(reader.next_record().unwrap().is_none());
+    }
+
+    #[test]
     fn optional_fields_are_checked_only_when_requested() {
         let mut records =
             read_records(&b"# header\nchr1\t10\t20\nchr1\t20\t30\tname\t0\t-\n"[..]).unwrap();
@@ -506,7 +601,7 @@ mod tests {
         let other = read_records(&b"chr1\t30\t40\tb\n"[..]).unwrap();
         let mut joined = Vec::new();
         records[0]
-            .write_joined_column(&mut joined, &other[0], -6)
+            .write_joined_raw_column(&mut joined, &other[0].raw, -6)
             .unwrap();
         assert_eq!(joined, b"chr1\t10\t20\ta\t0\t+\tchr1\t30\t40\tb\t-6\n");
     }

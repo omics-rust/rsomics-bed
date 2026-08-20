@@ -124,7 +124,7 @@ pub fn window(
         match options.report {
             WindowReport::Pairs => {
                 for &id in &eligible_ids {
-                    record.write_joined(&mut output, b.record(id))?;
+                    record.write_joined_raw(&mut output, b.record(id).raw())?;
                 }
             }
             WindowReport::Any if !eligible_ids.is_empty() => record.write_raw(&mut output)?,
