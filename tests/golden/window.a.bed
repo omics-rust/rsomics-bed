@@ -1,0 +1,5 @@
+chr1	10	20	a-plus	0	+
+chr1	50	60	a-minus	0	-
+chr1	100	100	a-point	0	+
+chr2	0	5	a-origin	0	+
+chr3	10	20	a-no-hit	0	-

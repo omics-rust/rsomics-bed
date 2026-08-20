@@ -1,0 +1,5 @@
+chr1	10	20	a-plus	0	+	chr1	12	14	b-overlap	0	+
+chr1	50	60	a-minus	0	-	chr1	45	48	b-near-minus	0	-
+chr1	100	100	a-point	0	+	chr1	99	99	b-point-left	0	+
+chr1	100	100	a-point	0	+	chr1	101	101	b-point-right	0	-
+chr2	0	5	a-origin	0	+	chr2	8	10	b-chr2	0	+

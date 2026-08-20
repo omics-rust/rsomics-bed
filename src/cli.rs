@@ -10,7 +10,7 @@ use rsomics_common::{
 };
 
 use crate::io::open_input;
-use crate::{cluster, complement, intersect, merge, read_genome, sort, subtract};
+use crate::{cluster, complement, intersect, merge, read_genome, sort, subtract, window};
 
 const META: ToolMeta = ToolMeta {
     name: "rsomics-bed",
@@ -46,6 +46,8 @@ enum Command {
     Complement(ComplementArgs),
     /// Assign cluster IDs to overlapping or nearby sorted intervals
     Cluster(ClusterArgs),
+    /// Report B intervals in a configurable neighborhood of A
+    Window(WindowArgs),
 }
 
 #[derive(Debug, Args)]
@@ -128,6 +130,109 @@ enum ClusterStrand {
     Same,
 }
 
+#[derive(Debug, Args)]
+#[command(next_help_heading = "Input/output")]
+struct WindowArgs {
+    /// BED file A; use - for standard input
+    #[arg(short = 'a', long, value_name = "BED")]
+    a: PathBuf,
+
+    /// BED file B; standard input is not supported
+    #[arg(short = 'b', long, value_name = "BED")]
+    b: PathBuf,
+
+    /// Output BED file; omit or use - for standard output
+    #[arg(short, long, value_name = "BED")]
+    output: Option<PathBuf>,
+
+    /// Symmetric window size
+    #[arg(
+        short = 'w',
+        long,
+        value_name = "BP",
+        conflicts_with_all = ["left", "right"],
+        help_heading = "Window"
+    )]
+    window: Option<u64>,
+
+    /// Bases added to the reference-left side of A
+    #[arg(
+        short = 'l',
+        long,
+        value_name = "BP",
+        requires = "right",
+        help_heading = "Window"
+    )]
+    left: Option<u64>,
+
+    /// Bases added to the reference-right side of A
+    #[arg(
+        short = 'r',
+        long,
+        value_name = "BP",
+        requires = "left",
+        help_heading = "Window"
+    )]
+    right: Option<u64>,
+
+    /// Interpret left and right relative to A's strand
+    #[arg(long, help_heading = "Window")]
+    strand_relative: bool,
+
+    /// Strand relationship between A and B
+    #[arg(
+        long,
+        value_enum,
+        default_value = "any",
+        value_name = "MODE",
+        help_heading = "Window"
+    )]
+    strand: WindowStrand,
+
+    /// Output reduction
+    #[arg(long, value_enum, value_name = "MODE", help_heading = "Reporting")]
+    report: Option<WindowReport>,
+
+    /// Emit A once when any B record matches
+    #[arg(
+        short = 'u',
+        conflicts_with_all = ["report", "report_count", "report_none"],
+        help_heading = "Reporting"
+    )]
+    report_any: bool,
+
+    /// Append the number of matching B records
+    #[arg(
+        short = 'c',
+        conflicts_with_all = ["report", "report_any", "report_none"],
+        help_heading = "Reporting"
+    )]
+    report_count: bool,
+
+    /// Emit A only when no B record matches
+    #[arg(
+        short = 'v',
+        conflicts_with_all = ["report", "report_any", "report_count"],
+        help_heading = "Reporting"
+    )]
+    report_none: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum WindowStrand {
+    Any,
+    Same,
+    Opposite,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum WindowReport {
+    Pairs,
+    Any,
+    Count,
+    None,
+}
+
 #[must_use]
 pub(crate) fn run() -> process::ExitCode {
     let cli = rsomics_help::parse::<Cli>();
@@ -202,6 +307,55 @@ fn execute(cli: Cli) -> Result<()> {
                     cluster::ClusterOptions {
                         distance: args.distance,
                         same_strand,
+                    },
+                )
+            })
+        }
+        Command::Window(args) => {
+            require_named_json_output(json, args.output.as_deref())?;
+            reject_stdin_b(&args.b)?;
+            reject_output_alias(
+                args.output.as_deref(),
+                [Some(args.a.as_path()), Some(args.b.as_path())],
+            )?;
+            let (left, right) = match (args.window, args.left, args.right) {
+                (Some(distance), None, None) => (distance, distance),
+                (None, Some(left), Some(right)) => (left, right),
+                (None, None, None) => (1000, 1000),
+                _ => unreachable!("Clap validates window width combinations"),
+            };
+            let strand = match args.strand {
+                WindowStrand::Any => window::StrandFilter::Any,
+                WindowStrand::Same => window::StrandFilter::Same,
+                WindowStrand::Opposite => window::StrandFilter::Opposite,
+            };
+            let report = if args.report_any {
+                window::WindowReport::Any
+            } else if args.report_count {
+                window::WindowReport::Count
+            } else if args.report_none {
+                window::WindowReport::None
+            } else {
+                match args.report.unwrap_or(WindowReport::Pairs) {
+                    WindowReport::Pairs => window::WindowReport::Pairs,
+                    WindowReport::Any => window::WindowReport::Any,
+                    WindowReport::Count => window::WindowReport::Count,
+                    WindowReport::None => window::WindowReport::None,
+                }
+            };
+            let a = open_input(Some(&args.a))?;
+            let b = open_input(Some(&args.b))?;
+            write_output(args.output.as_deref(), |output| {
+                window::window(
+                    a,
+                    b,
+                    output,
+                    window::WindowOptions {
+                        left,
+                        right,
+                        strand_relative: args.strand_relative,
+                        strand,
+                        report,
                     },
                 )
             })

@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use rsomics_bed::{cluster, complement, intersect, merge, read_genome, sort, subtract};
+use rsomics_bed::{cluster, complement, intersect, merge, read_genome, sort, subtract, window};
 
 fn golden(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -69,8 +69,60 @@ fn cluster_output(input: &str, distance: u64, same_strand: bool) -> Vec<u8> {
     output
 }
 
+fn window_output(options: window::WindowOptions) -> Vec<u8> {
+    let mut output = Vec::new();
+    window::window(
+        File::open(golden("window.a.bed")).unwrap(),
+        File::open(golden("window.b.bed")).unwrap(),
+        &mut output,
+        options,
+    )
+    .unwrap();
+    output
+}
+
 #[test]
 fn committed_golden_outputs_match() {
+    let window_base = window::WindowOptions {
+        left: 5,
+        right: 5,
+        ..window::WindowOptions::default()
+    };
+    assert_eq!(
+        window_output(window_base),
+        bytes("window.pairs.expected.bed")
+    );
+    assert_eq!(
+        window_output(window::WindowOptions {
+            left: 10,
+            right: 2,
+            ..window::WindowOptions::default()
+        }),
+        bytes("window.asymmetric.expected.bed")
+    );
+    assert_eq!(
+        window_output(window::WindowOptions {
+            left: 10,
+            right: 2,
+            strand_relative: true,
+            strand: window::StrandFilter::Same,
+            report: window::WindowReport::Pairs,
+        }),
+        bytes("window.strand.expected.bed")
+    );
+    for (report, expected) in [
+        (window::WindowReport::Count, "window.count.expected.bed"),
+        (window::WindowReport::Any, "window.any.expected.bed"),
+        (window::WindowReport::None, "window.none.expected.bed"),
+    ] {
+        assert_eq!(
+            window_output(window::WindowOptions {
+                report,
+                ..window_base
+            }),
+            bytes(expected)
+        );
+    }
     assert_eq!(
         cluster_output("cluster.input.bed", 0, false),
         bytes("cluster.default.expected.bed")
@@ -212,6 +264,45 @@ fn live_bedtools_231_compatibility() {
     );
 
     let cases = [
+        (
+            window_output(window::WindowOptions {
+                left: 5,
+                right: 5,
+                ..window::WindowOptions::default()
+            }),
+            bedtools(
+                &["window", "-w", "5", "-a"],
+                &["window.a.bed", "-b", "window.b.bed"],
+            ),
+            "window pairs",
+        ),
+        (
+            window_output(window::WindowOptions {
+                left: 10,
+                right: 2,
+                strand_relative: true,
+                strand: window::StrandFilter::Same,
+                report: window::WindowReport::Pairs,
+            }),
+            bedtools(
+                &["window", "-l", "10", "-r", "2", "-sw", "-sm", "-a"],
+                &["window.a.bed", "-b", "window.b.bed"],
+            ),
+            "window strand-relative same-strand",
+        ),
+        (
+            window_output(window::WindowOptions {
+                left: 5,
+                right: 5,
+                report: window::WindowReport::Count,
+                ..window::WindowOptions::default()
+            }),
+            bedtools(
+                &["window", "-w", "5", "-c", "-a"],
+                &["window.a.bed", "-b", "window.b.bed"],
+            ),
+            "window count",
+        ),
         (
             cluster_output("cluster.input.bed", 0, false),
             bedtools(&["cluster", "-i"], &["cluster.input.bed"]),

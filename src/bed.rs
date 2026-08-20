@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::io::{BufRead, BufReader, Read, Write};
 
 use rsomics_common::{Context, Result, RsomicsError};
@@ -93,7 +94,18 @@ impl BedRecord {
         output.write_all(b"\n").rs_context("writing BED record")
     }
 
-    pub(crate) fn write_column(&self, output: &mut dyn Write, value: u64) -> Result<()> {
+    pub(crate) fn write_joined(&self, output: &mut dyn Write, other: &Self) -> Result<()> {
+        output
+            .write_all(&self.raw)
+            .rs_context("writing BED record")?;
+        output.write_all(b"\t").rs_context("writing BED record")?;
+        output
+            .write_all(&other.raw)
+            .rs_context("writing BED record")?;
+        output.write_all(b"\n").rs_context("writing BED record")
+    }
+
+    pub(crate) fn write_column(&self, output: &mut dyn Write, value: impl Display) -> Result<()> {
         output
             .write_all(&self.raw)
             .rs_context("writing BED record")?;

@@ -1,0 +1,8 @@
+chr1	25	30	b-right	0	+
+chr1	0	5	b-left	0	-
+chr1	12	14	b-overlap	0	+
+chr1	45	48	b-near-minus	0	-
+chr1	65	70	b-far	0	+
+chr1	99	99	b-point-left	0	+
+chr1	101	101	b-point-right	0	-
+chr2	8	10	b-chr2	0	+

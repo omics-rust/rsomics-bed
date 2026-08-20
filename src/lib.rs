@@ -15,6 +15,7 @@ mod overlap_index;
 mod relation_index;
 pub mod sort;
 pub mod subtract;
+pub mod window;
 
 pub use bed::{Genome, read_genome};
 

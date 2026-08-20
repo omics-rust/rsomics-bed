@@ -26,6 +26,7 @@ fn top_level_and_nested_help_render() {
         "subtract",
         "complement",
         "cluster",
+        "window",
     ] {
         assert!(top.contains(command), "{top}");
     }
@@ -46,6 +47,50 @@ fn top_level_and_nested_help_render() {
     assert!(nested.contains("Input/output:"), "{nested}");
     assert!(nested.contains("Global options:"), "{nested}");
     assert!(!nested.contains("rsomics-bed-intersect"), "{nested}");
+}
+
+#[test]
+fn product_binary_dispatches_window_count() {
+    let output = Command::new(binary())
+        .args(["window", "-a"])
+        .arg(golden("window.a.bed"))
+        .arg("-b")
+        .arg(golden("window.b.bed"))
+        .args(["--window", "5", "--report", "count"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        output.stdout,
+        std::fs::read(golden("window.count.expected.bed")).unwrap()
+    );
+}
+
+#[test]
+fn window_rejects_conflicting_width_and_report_selectors() {
+    let widths = Command::new(binary())
+        .args(["window", "-a"])
+        .arg(golden("window.a.bed"))
+        .arg("-b")
+        .arg(golden("window.b.bed"))
+        .args(["--window", "5", "--left", "2", "--right", "3"])
+        .output()
+        .unwrap();
+    assert_eq!(widths.status.code(), Some(2));
+
+    let reports = Command::new(binary())
+        .args(["window", "-a"])
+        .arg(golden("window.a.bed"))
+        .arg("-b")
+        .arg(golden("window.b.bed"))
+        .args(["--report", "count", "-u"])
+        .output()
+        .unwrap();
+    assert_eq!(reports.status.code(), Some(2));
 }
 
 #[test]
