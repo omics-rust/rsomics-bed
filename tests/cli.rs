@@ -27,6 +27,7 @@ fn top_level_and_nested_help_render() {
         "complement",
         "cluster",
         "window",
+        "closest",
     ] {
         assert!(top.contains(command), "{top}");
     }
@@ -47,6 +48,94 @@ fn top_level_and_nested_help_render() {
     assert!(nested.contains("Input/output:"), "{nested}");
     assert!(nested.contains("Global options:"), "{nested}");
     assert!(!nested.contains("rsomics-bed-intersect"), "{nested}");
+}
+
+#[test]
+fn product_binary_dispatches_closest_signed_b() {
+    let output = Command::new(binary())
+        .args(["closest", "-a"])
+        .arg(golden("closest.a.bed"))
+        .arg("-b")
+        .arg(golden("closest.b.bed"))
+        .args(["-D", "b"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        output.stdout,
+        std::fs::read(golden("closest.b-oriented.expected.bed")).unwrap()
+    );
+}
+
+#[test]
+fn closest_rejects_conflicting_compatibility_selectors() {
+    let strand = Command::new(binary())
+        .args(["closest", "-a"])
+        .arg(golden("closest.a.bed"))
+        .arg("-b")
+        .arg(golden("closest.b.bed"))
+        .args(["--strand", "any", "-s"])
+        .output()
+        .unwrap();
+    assert_eq!(strand.status.code(), Some(2));
+
+    let distance = Command::new(binary())
+        .args(["closest", "-a"])
+        .arg(golden("closest.a.bed"))
+        .arg("-b")
+        .arg(golden("closest.b.bed"))
+        .args(["--distance", "unsigned", "-D", "ref"])
+        .output()
+        .unwrap();
+    assert_eq!(distance.status.code(), Some(2));
+}
+
+#[test]
+fn closest_compatibility_aliases_dispatch_exact_outputs() {
+    for (flags, expected) in [
+        (&["-d"][..], "closest.unsigned.expected.bed"),
+        (&["-s"][..], "closest.same.expected.bed"),
+        (&["-S"][..], "closest.opposite.expected.bed"),
+        (&["-N"][..], "closest.different-name.expected.bed"),
+        (
+            &["--ignore-overlaps"][..],
+            "closest.ignore-overlaps.expected.bed",
+        ),
+        (&["-t", "first"][..], "closest.first.expected.bed"),
+        (&["-t", "last"][..], "closest.last.expected.bed"),
+    ] {
+        let output = Command::new(binary())
+            .args(["closest", "-a"])
+            .arg(golden("closest.a.bed"))
+            .arg("-b")
+            .arg(golden("closest.b.bed"))
+            .args(flags)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{flags:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(output.stdout, std::fs::read(golden(expected)).unwrap());
+    }
+}
+
+#[test]
+fn closest_rejects_standard_input_for_b() {
+    let output = Command::new(binary())
+        .args(["closest", "-a"])
+        .arg(golden("closest.a.bed"))
+        .args(["-b", "-"])
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("B must be a file"));
 }
 
 #[test]

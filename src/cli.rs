@@ -10,7 +10,7 @@ use rsomics_common::{
 };
 
 use crate::io::open_input;
-use crate::{cluster, complement, intersect, merge, read_genome, sort, subtract, window};
+use crate::{closest, cluster, complement, intersect, merge, read_genome, sort, subtract, window};
 
 const META: ToolMeta = ToolMeta {
     name: "rsomics-bed",
@@ -48,6 +48,8 @@ enum Command {
     Cluster(ClusterArgs),
     /// Report B intervals in a configurable neighborhood of A
     Window(WindowArgs),
+    /// Report the closest eligible B interval or intervals for each A
+    Closest(ClosestArgs),
 }
 
 #[derive(Debug, Args)]
@@ -233,6 +235,114 @@ enum WindowReport {
     None,
 }
 
+#[derive(Debug, Args)]
+#[command(next_help_heading = "Input/output")]
+struct ClosestArgs {
+    /// BED file A; use - for standard input
+    #[arg(short = 'a', long, value_name = "BED")]
+    a: PathBuf,
+
+    /// BED file B; standard input is not supported
+    #[arg(short = 'b', long, value_name = "BED")]
+    b: PathBuf,
+
+    /// Output BED file; omit or use - for standard output
+    #[arg(short, long, value_name = "BED")]
+    output: Option<PathBuf>,
+
+    /// Strand relationship between A and B
+    #[arg(long, value_enum, value_name = "MODE", help_heading = "Selection")]
+    strand: Option<ClosestStrand>,
+
+    /// Require matching strands
+    #[arg(
+        short = 's',
+        conflicts_with_all = ["strand", "opposite_strand"],
+        help_heading = "Selection"
+    )]
+    same_strand: bool,
+
+    /// Require opposing strands
+    #[arg(
+        short = 'S',
+        conflicts_with_all = ["strand", "same_strand"],
+        help_heading = "Selection"
+    )]
+    opposite_strand: bool,
+
+    /// Exclude B records with the same BED name as A
+    #[arg(short = 'N', long, help_heading = "Selection")]
+    different_name: bool,
+
+    /// Exclude B records that overlap A
+    #[arg(long, help_heading = "Selection")]
+    ignore_overlaps: bool,
+
+    /// Distance representation
+    #[arg(long, value_enum, value_name = "MODE", help_heading = "Reporting")]
+    distance: Option<ClosestDistance>,
+
+    /// Append the non-negative distance
+    #[arg(
+        short = 'd',
+        conflicts_with_all = ["distance", "signed_distance"],
+        help_heading = "Reporting"
+    )]
+    unsigned_distance: bool,
+
+    /// Append a signed distance
+    #[arg(
+        short = 'D',
+        value_enum,
+        value_name = "ORIENTATION",
+        conflicts_with_all = ["distance", "unsigned_distance"],
+        help_heading = "Reporting"
+    )]
+    signed_distance: Option<SignedDistance>,
+
+    /// Equal-distance ties
+    #[arg(
+        short = 't',
+        long,
+        value_enum,
+        default_value = "all",
+        value_name = "MODE",
+        help_heading = "Reporting"
+    )]
+    tie: ClosestTie,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum ClosestStrand {
+    Any,
+    Same,
+    Opposite,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum ClosestDistance {
+    None,
+    Unsigned,
+    Reference,
+    A,
+    B,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum SignedDistance {
+    #[value(name = "ref")]
+    Reference,
+    A,
+    B,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum ClosestTie {
+    All,
+    First,
+    Last,
+}
+
 #[must_use]
 pub(crate) fn run() -> process::ExitCode {
     let cli = rsomics_help::parse::<Cli>();
@@ -360,6 +470,63 @@ fn execute(cli: Cli) -> Result<()> {
                 )
             })
         }
+        Command::Closest(args) => {
+            require_named_json_output(json, args.output.as_deref())?;
+            reject_stdin_b(&args.b)?;
+            reject_output_alias(
+                args.output.as_deref(),
+                [Some(args.a.as_path()), Some(args.b.as_path())],
+            )?;
+            let strand = if args.same_strand {
+                crate::StrandFilter::Same
+            } else if args.opposite_strand {
+                crate::StrandFilter::Opposite
+            } else {
+                match args.strand.unwrap_or(ClosestStrand::Any) {
+                    ClosestStrand::Any => crate::StrandFilter::Any,
+                    ClosestStrand::Same => crate::StrandFilter::Same,
+                    ClosestStrand::Opposite => crate::StrandFilter::Opposite,
+                }
+            };
+            let distance = if args.unsigned_distance {
+                closest::DistanceMode::Unsigned
+            } else if let Some(mode) = args.signed_distance {
+                match mode {
+                    SignedDistance::Reference => closest::DistanceMode::Reference,
+                    SignedDistance::A => closest::DistanceMode::A,
+                    SignedDistance::B => closest::DistanceMode::B,
+                }
+            } else {
+                match args.distance.unwrap_or(ClosestDistance::None) {
+                    ClosestDistance::None => closest::DistanceMode::None,
+                    ClosestDistance::Unsigned => closest::DistanceMode::Unsigned,
+                    ClosestDistance::Reference => closest::DistanceMode::Reference,
+                    ClosestDistance::A => closest::DistanceMode::A,
+                    ClosestDistance::B => closest::DistanceMode::B,
+                }
+            };
+            let tie = match args.tie {
+                ClosestTie::All => closest::TieMode::All,
+                ClosestTie::First => closest::TieMode::First,
+                ClosestTie::Last => closest::TieMode::Last,
+            };
+            let a = open_input(Some(&args.a))?;
+            let b = open_input(Some(&args.b))?;
+            write_output(args.output.as_deref(), |output| {
+                closest::closest(
+                    a,
+                    b,
+                    output,
+                    closest::ClosestOptions {
+                        strand,
+                        different_name: args.different_name,
+                        ignore_overlaps: args.ignore_overlaps,
+                        distance,
+                        tie,
+                    },
+                )
+            })
+        }
     }
 }
 
@@ -428,6 +595,14 @@ mod tests {
         assert!(help.contains("Input/output:"), "{help}");
         assert!(help.contains("Clustering:"), "{help}");
         assert!(help.contains("--strand <MODE>"), "{help}");
+
+        let error = Cli::try_parse_from(["rsomics-bed", "closest", "--help"]).unwrap_err();
+        let help = error.to_string();
+        assert!(help.contains("Input/output:"), "{help}");
+        assert!(help.contains("Selection:"), "{help}");
+        assert!(help.contains("Reporting:"), "{help}");
+        assert!(help.contains("--distance <MODE>"), "{help}");
+        assert!(help.contains("--ignore-overlaps"), "{help}");
     }
 
     #[test]
