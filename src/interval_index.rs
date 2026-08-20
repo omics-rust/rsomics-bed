@@ -155,8 +155,22 @@ impl IntervalIndex {
         label: &str,
         ids: &mut Vec<usize>,
     ) -> Result<()> {
-        ids.clear();
         let (start, end) = overlap_bounds(chrom, start, end, label)?;
+        self.range_candidates(chrom, start, end, label, ids)
+    }
+
+    pub(crate) fn range_candidates(
+        &self,
+        chrom: &str,
+        start: u64,
+        end: u64,
+        label: &str,
+        ids: &mut Vec<usize>,
+    ) -> Result<()> {
+        ids.clear();
+        if start >= end {
+            return Ok(());
+        }
         self.append_nonzero_ids(chrom, start, end, label, ids)?;
         self.append_zero_ids(chrom, start, end, ids);
         ids.sort_unstable();
@@ -265,6 +279,16 @@ mod tests {
         let mut ids = vec![99];
         index
             .intersection_candidates("chr2", 10, 20, "A", &mut ids)
+            .unwrap();
+        assert!(ids.is_empty());
+    }
+
+    #[test]
+    fn empty_query_ranges_return_no_zero_length_candidates() {
+        let index = build(&[("chr1", 10, 10)]).unwrap();
+        let mut ids = vec![99];
+        index
+            .range_candidates("chr1", 10, 10, "A", &mut ids)
             .unwrap();
         assert!(ids.is_empty());
     }

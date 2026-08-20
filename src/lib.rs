@@ -12,6 +12,7 @@ mod interval_index;
 mod io;
 pub mod merge;
 mod overlap_index;
+mod relation_index;
 pub mod sort;
 pub mod subtract;
 

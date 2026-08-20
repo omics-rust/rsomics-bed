@@ -31,6 +31,14 @@ impl BedRecord {
         self.interval.end()
     }
 
+    pub(crate) fn line_number(&self) -> usize {
+        self.line_number
+    }
+
+    pub(crate) fn field_count(&self) -> usize {
+        self.raw.split(|&byte| byte == b'\t').count()
+    }
+
     pub(crate) fn strand(&self, label: &str) -> Result<Strand> {
         match self.field(5, label, "strand")? {
             b"+" => Ok(Strand::Forward),
