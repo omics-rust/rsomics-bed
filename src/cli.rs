@@ -3,14 +3,14 @@
 use std::path::{Path, PathBuf};
 use std::process;
 
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use rsomics_common::{
     OutputArgs, Result, RsomicsError, ToolMeta, reject_output_alias as reject_path_alias,
     run as run_tool, write_output,
 };
 
 use crate::io::open_input;
-use crate::{complement, intersect, merge, read_genome, sort, subtract};
+use crate::{cluster, complement, intersect, merge, read_genome, sort, subtract};
 
 const META: ToolMeta = ToolMeta {
     name: "rsomics-bed",
@@ -44,6 +44,8 @@ enum Command {
     Subtract(BinaryArgs),
     /// Emit regions not covered by sorted BED input
     Complement(ComplementArgs),
+    /// Assign cluster IDs to overlapping or nearby sorted intervals
+    Cluster(ClusterArgs),
 }
 
 #[derive(Debug, Args)]
@@ -88,6 +90,42 @@ struct ComplementArgs {
     /// Output BED file; omit or use - for standard output
     #[arg(short, long, value_name = "BED")]
     output: Option<PathBuf>,
+}
+
+#[derive(Debug, Args)]
+#[command(next_help_heading = "Input/output")]
+struct ClusterArgs {
+    /// Input sorted BED file; omit or use - for standard input
+    #[arg(value_name = "BED")]
+    input: Option<PathBuf>,
+
+    /// Output BED file; omit or use - for standard output
+    #[arg(short, long, value_name = "BED")]
+    output: Option<PathBuf>,
+
+    /// Maximum gap between records in one cluster
+    #[arg(
+        short = 'd',
+        long,
+        default_value_t = 0,
+        value_name = "BP",
+        help_heading = "Clustering"
+    )]
+    distance: u64,
+
+    /// Strand policy
+    #[arg(long, value_enum, value_name = "MODE", help_heading = "Clustering")]
+    strand: Option<ClusterStrand>,
+
+    /// Cluster forward and reverse strands independently
+    #[arg(short = 's', conflicts_with = "strand", help_heading = "Clustering")]
+    same_strand: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum ClusterStrand {
+    Any,
+    Same,
 }
 
 #[must_use]
@@ -152,6 +190,22 @@ fn execute(cli: Cli) -> Result<()> {
                 complement::complement(input, &genome, output)
             })
         }
+        Command::Cluster(args) => {
+            require_named_json_output(json, args.output.as_deref())?;
+            reject_output_alias(args.output.as_deref(), [args.input.as_deref()])?;
+            let input = open_input(args.input.as_deref())?;
+            let same_strand = args.same_strand || matches!(args.strand, Some(ClusterStrand::Same));
+            write_output(args.output.as_deref(), |output| {
+                cluster::cluster(
+                    input,
+                    output,
+                    cluster::ClusterOptions {
+                        distance: args.distance,
+                        same_strand,
+                    },
+                )
+            })
+        }
     }
 }
 
@@ -214,6 +268,12 @@ mod tests {
         let help = error.to_string();
         assert!(help.contains("--a <BED>"), "{help}");
         assert!(help.contains("--b <BED>"), "{help}");
+
+        let error = Cli::try_parse_from(["rsomics-bed", "cluster", "--help"]).unwrap_err();
+        let help = error.to_string();
+        assert!(help.contains("Input/output:"), "{help}");
+        assert!(help.contains("Clustering:"), "{help}");
+        assert!(help.contains("--strand <MODE>"), "{help}");
     }
 
     #[test]

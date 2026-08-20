@@ -2,7 +2,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use rsomics_bed::{complement, intersect, merge, read_genome, sort, subtract};
+use rsomics_bed::{cluster, complement, intersect, merge, read_genome, sort, subtract};
 
 fn golden(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -55,8 +55,34 @@ fn complement_output(input: &str) -> Vec<u8> {
     output
 }
 
+fn cluster_output(input: &str, distance: u64, same_strand: bool) -> Vec<u8> {
+    let mut output = Vec::new();
+    cluster::cluster(
+        File::open(golden(input)).unwrap(),
+        &mut output,
+        cluster::ClusterOptions {
+            distance,
+            same_strand,
+        },
+    )
+    .unwrap();
+    output
+}
+
 #[test]
 fn committed_golden_outputs_match() {
+    assert_eq!(
+        cluster_output("cluster.input.bed", 0, false),
+        bytes("cluster.default.expected.bed")
+    );
+    assert_eq!(
+        cluster_output("cluster.input.bed", 5, false),
+        bytes("cluster.distance.expected.bed")
+    );
+    assert_eq!(
+        cluster_output("cluster.strand.input.bed", 0, true),
+        bytes("cluster.strand.expected.bed")
+    );
     assert_eq!(sort_output("sort.input.bed"), bytes("sort.expected.bed"));
     assert_eq!(
         sort_output("sort.headers.input.bed"),
@@ -186,6 +212,21 @@ fn live_bedtools_231_compatibility() {
     );
 
     let cases = [
+        (
+            cluster_output("cluster.input.bed", 0, false),
+            bedtools(&["cluster", "-i"], &["cluster.input.bed"]),
+            "cluster",
+        ),
+        (
+            cluster_output("cluster.input.bed", 5, false),
+            bedtools(&["cluster", "-d", "5", "-i"], &["cluster.input.bed"]),
+            "cluster distance",
+        ),
+        (
+            cluster_output("cluster.strand.input.bed", 0, true),
+            bedtools(&["cluster", "-s", "-i"], &["cluster.strand.input.bed"]),
+            "cluster strand",
+        ),
         (
             sort_output("sort.input.bed"),
             bedtools(&["sort", "-i"], &["sort.input.bed"]),

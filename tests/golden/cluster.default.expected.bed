@@ -1,0 +1,7 @@
+chr1	0	10	a	1
+chr1	10	10	point	1
+chr1	10	20	b	1
+chr1	25	30	c	2
+chr1	30	40	d	2
+chr2	1	5	e	3
+chr2	1	5	e-dup	3

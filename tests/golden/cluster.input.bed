@@ -1,0 +1,8 @@
+# note
+chr1	0	10	a
+chr1	10	10	point
+chr1	10	20	b
+chr1	25	30	c
+chr1	30	40	d
+chr2	1	5	e
+chr2	1	5	e-dup

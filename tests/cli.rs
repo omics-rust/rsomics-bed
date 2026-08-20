@@ -19,7 +19,14 @@ fn top_level_and_nested_help_render() {
     let top = Command::new(binary()).arg("--help").output().unwrap();
     assert!(top.status.success());
     let top = String::from_utf8(top.stdout).unwrap();
-    for command in ["sort", "merge", "intersect", "subtract", "complement"] {
+    for command in [
+        "sort",
+        "merge",
+        "intersect",
+        "subtract",
+        "complement",
+        "cluster",
+    ] {
         assert!(top.contains(command), "{top}");
     }
     assert!(top.contains("Global options:"), "{top}");
@@ -39,6 +46,35 @@ fn top_level_and_nested_help_render() {
     assert!(nested.contains("Input/output:"), "{nested}");
     assert!(nested.contains("Global options:"), "{nested}");
     assert!(!nested.contains("rsomics-bed-intersect"), "{nested}");
+}
+
+#[test]
+fn product_binary_dispatches_cluster() {
+    let output = Command::new(binary())
+        .arg("cluster")
+        .arg(golden("cluster.input.bed"))
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        output.stdout,
+        std::fs::read(golden("cluster.default.expected.bed")).unwrap()
+    );
+}
+
+#[test]
+fn cluster_rejects_conflicting_strand_selectors() {
+    let output = Command::new(binary())
+        .args(["cluster", "--strand", "any", "-s"])
+        .arg(golden("cluster.strand.input.bed"))
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
 }
 
 #[test]

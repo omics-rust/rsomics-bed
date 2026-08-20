@@ -5,6 +5,7 @@
 
 mod bed;
 mod cli;
+pub mod cluster;
 pub mod complement;
 pub mod intersect;
 mod io;
