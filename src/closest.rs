@@ -151,6 +151,10 @@ impl RequiredBFields {
 
 /// Emit the closest eligible B record or records for each A record.
 ///
+/// B may be arbitrarily ordered. Equal-distance selection follows the requested
+/// distance ordering and then B-file order. A no-hit result uses BEDTools-style
+/// placeholder B fields and an optional distance of `-1`.
+///
 /// # Errors
 ///
 /// Returns an error for malformed BED, inconsistent B field widths, missing or

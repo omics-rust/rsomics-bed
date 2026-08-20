@@ -215,7 +215,7 @@ fn committed_golden_outputs_match() {
             left: 10,
             right: 2,
             strand_relative: true,
-            strand: window::StrandFilter::Same,
+            strand: StrandFilter::Same,
             report: window::WindowReport::Pairs,
         }),
         bytes("window.strand.expected.bed")
@@ -391,7 +391,7 @@ fn live_bedtools_231_compatibility() {
                 left: 10,
                 right: 2,
                 strand_relative: true,
-                strand: window::StrandFilter::Same,
+                strand: StrandFilter::Same,
                 report: window::WindowReport::Pairs,
             }),
             bedtools(

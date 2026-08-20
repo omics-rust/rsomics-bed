@@ -4,10 +4,9 @@ use std::io::{BufWriter, Read, Write};
 
 use rsomics_common::{Context, Result};
 
+use crate::StrandFilter;
 use crate::bed::{BedReader, Strand, invalid, virtual_bounds};
 use crate::relation_index::RelationBed;
-
-pub use crate::StrandFilter;
 
 /// Output reduction applied to each A record.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -51,6 +50,10 @@ impl Default for WindowOptions {
 }
 
 /// Report B records within the configured neighborhood of each A record.
+///
+/// Pair output contains the original A and B fields and preserves B-file order.
+/// Reduced reports retain the original A fields and append only their declared
+/// count column when applicable.
 ///
 /// # Errors
 ///

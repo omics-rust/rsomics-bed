@@ -435,9 +435,9 @@ fn execute(cli: Cli) -> Result<()> {
                 _ => unreachable!("Clap validates window width combinations"),
             };
             let strand = match args.strand {
-                WindowStrand::Any => window::StrandFilter::Any,
-                WindowStrand::Same => window::StrandFilter::Same,
-                WindowStrand::Opposite => window::StrandFilter::Opposite,
+                WindowStrand::Any => crate::StrandFilter::Any,
+                WindowStrand::Same => crate::StrandFilter::Same,
+                WindowStrand::Opposite => crate::StrandFilter::Opposite,
             };
             let report = if args.report_any {
                 window::WindowReport::Any
