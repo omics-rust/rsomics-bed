@@ -40,6 +40,10 @@ impl BedRecord {
         self.raw.split(|&byte| byte == b'\t').count()
     }
 
+    pub(crate) fn name(&self, label: &str) -> Result<&[u8]> {
+        self.field(3, label, "name")
+    }
+
     pub(crate) fn strand(&self, label: &str) -> Result<Strand> {
         match self.field(5, label, "strand")? {
             b"+" => Ok(Strand::Forward),
@@ -446,6 +450,24 @@ mod tests {
             "{error}"
         );
         assert_eq!(named.strand("closest A").unwrap(), Strand::Reverse);
+    }
+
+    #[test]
+    fn names_are_checked_only_when_requested() {
+        let records = read_records(&b"chr1\t10\t20\nchr1\t30\t40\t\n"[..]).unwrap();
+        let missing = records[0].name("closest A").unwrap_err();
+        assert!(
+            missing.to_string().contains("closest A BED line 1"),
+            "{missing}"
+        );
+        let empty = records[1].name("closest B").unwrap_err();
+        assert!(
+            empty.to_string().contains("closest B BED line 2"),
+            "{empty}"
+        );
+
+        let named = read_records(&b"chr1\t50\t60\twanted\n"[..]).unwrap();
+        assert_eq!(named[0].name("closest B").unwrap(), b"wanted");
     }
 
     #[test]
