@@ -3,7 +3,7 @@ use std::io::Read;
 
 use rsomics_common::Result;
 
-use crate::bed::{BedReader, BedRecord, invalid};
+use crate::bed::{BedReader, BedRecord, Strand, invalid};
 use crate::interval_index::{IndexedInterval, IntervalIndex, IntervalIndexBuilder};
 
 pub(crate) struct RelationBed {
@@ -96,6 +96,13 @@ impl RelationBed {
 
     pub(crate) fn len(&self) -> usize {
         self.records.len()
+    }
+
+    pub(crate) fn checked_strands(&self, label: &str) -> Result<Vec<Strand>> {
+        self.records
+            .iter()
+            .map(|record| record.strand(label))
+            .collect()
     }
 
     pub(crate) fn range_candidates(

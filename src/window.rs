@@ -7,17 +7,7 @@ use rsomics_common::{Context, Result};
 use crate::bed::{BedReader, Strand, invalid, virtual_bounds};
 use crate::relation_index::RelationBed;
 
-/// Strand relationship required between A and B.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum StrandFilter {
-    /// Ignore strand fields.
-    #[default]
-    Any,
-    /// Require matching strands.
-    Same,
-    /// Require opposing strands.
-    Opposite,
-}
+pub use crate::StrandFilter;
 
 /// Output reduction applied to each A record.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -77,11 +67,7 @@ pub fn window(
     let b_strands = if options.strand == StrandFilter::Any {
         None
     } else {
-        Some(
-            (0..b.len())
-                .map(|id| b.record(id).strand("window B"))
-                .collect::<Result<Vec<_>>>()?,
-        )
+        Some(b.checked_strands("window B")?)
     };
     let mut a = BedReader::new(a_input);
     let mut output = BufWriter::new(output);

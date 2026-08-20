@@ -2,7 +2,10 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use rsomics_bed::{cluster, complement, intersect, merge, read_genome, sort, subtract, window};
+use rsomics_bed::{
+    StrandFilter, closest, cluster, complement, intersect, merge, read_genome, sort, subtract,
+    window,
+};
 
 fn golden(name: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -81,8 +84,115 @@ fn window_output(options: window::WindowOptions) -> Vec<u8> {
     output
 }
 
+fn closest_output(options: closest::ClosestOptions) -> Vec<u8> {
+    let mut output = Vec::new();
+    closest::closest(
+        File::open(golden("closest.a.bed")).unwrap(),
+        File::open(golden("closest.b.bed")).unwrap(),
+        &mut output,
+        options,
+    )
+    .unwrap();
+    output
+}
+
+fn closest_cases() -> Vec<(
+    closest::ClosestOptions,
+    &'static str,
+    &'static [&'static str],
+)> {
+    let default = closest::ClosestOptions::default();
+    vec![
+        (default, "closest.default.expected.bed", &[]),
+        (
+            closest::ClosestOptions {
+                distance: closest::DistanceMode::Unsigned,
+                ..default
+            },
+            "closest.unsigned.expected.bed",
+            &["-d"],
+        ),
+        (
+            closest::ClosestOptions {
+                distance: closest::DistanceMode::Reference,
+                ..default
+            },
+            "closest.reference.expected.bed",
+            &["-D", "ref"],
+        ),
+        (
+            closest::ClosestOptions {
+                distance: closest::DistanceMode::A,
+                ..default
+            },
+            "closest.a-oriented.expected.bed",
+            &["-D", "a"],
+        ),
+        (
+            closest::ClosestOptions {
+                distance: closest::DistanceMode::B,
+                ..default
+            },
+            "closest.b-oriented.expected.bed",
+            &["-D", "b"],
+        ),
+        (
+            closest::ClosestOptions {
+                strand: StrandFilter::Same,
+                ..default
+            },
+            "closest.same.expected.bed",
+            &["-s"],
+        ),
+        (
+            closest::ClosestOptions {
+                strand: StrandFilter::Opposite,
+                ..default
+            },
+            "closest.opposite.expected.bed",
+            &["-S"],
+        ),
+        (
+            closest::ClosestOptions {
+                different_name: true,
+                ..default
+            },
+            "closest.different-name.expected.bed",
+            &["-N"],
+        ),
+        (
+            closest::ClosestOptions {
+                ignore_overlaps: true,
+                ..default
+            },
+            "closest.ignore-overlaps.expected.bed",
+            &["-io"],
+        ),
+        (
+            closest::ClosestOptions {
+                tie: closest::TieMode::First,
+                ..default
+            },
+            "closest.first.expected.bed",
+            &["-t", "first"],
+        ),
+        (
+            closest::ClosestOptions {
+                tie: closest::TieMode::Last,
+                ..default
+            },
+            "closest.last.expected.bed",
+            &["-t", "last"],
+        ),
+    ]
+}
+
 #[test]
 fn committed_golden_outputs_match() {
+    for (options, expected, _) in closest_cases() {
+        assert_eq!(closest_output(options), bytes(expected));
+    }
+
     let window_base = window::WindowOptions {
         left: 5,
         right: 5,
@@ -391,6 +501,17 @@ fn live_bedtools_231_compatibility() {
 
     for (ours, upstream, operation) in cases {
         assert_eq!(ours, upstream, "{operation} differs from bedtools 2.31.1");
+    }
+
+    for (options, _, flags) in closest_cases() {
+        let mut prefix = vec!["closest"];
+        prefix.extend_from_slice(flags);
+        prefix.push("-a");
+        assert_eq!(
+            closest_output(options),
+            bedtools(&prefix, &["closest.a.bed", "-b", "closest.b.bed"]),
+            "closest {flags:?} differs from bedtools 2.31.1"
+        );
     }
 
     assert_eq!(

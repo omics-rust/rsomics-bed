@@ -99,14 +99,28 @@ impl BedRecord {
     }
 
     pub(crate) fn write_joined(&self, output: &mut dyn Write, other: &Self) -> Result<()> {
+        self.write_joined_fields(output, other)?;
+        output.write_all(b"\n").rs_context("writing BED record")
+    }
+
+    pub(crate) fn write_joined_column(
+        &self,
+        output: &mut dyn Write,
+        other: &Self,
+        value: impl Display,
+    ) -> Result<()> {
+        self.write_joined_fields(output, other)?;
+        writeln!(output, "\t{value}").rs_context("writing BED record")
+    }
+
+    fn write_joined_fields(&self, output: &mut dyn Write, other: &Self) -> Result<()> {
         output
             .write_all(&self.raw)
             .rs_context("writing BED record")?;
         output.write_all(b"\t").rs_context("writing BED record")?;
         output
             .write_all(&other.raw)
-            .rs_context("writing BED record")?;
-        output.write_all(b"\n").rs_context("writing BED record")
+            .rs_context("writing BED record")
     }
 
     pub(crate) fn write_column(&self, output: &mut dyn Write, value: impl Display) -> Result<()> {
@@ -488,6 +502,13 @@ mod tests {
         let mut appended = Vec::new();
         records[0].write_column(&mut appended, 42).unwrap();
         assert_eq!(appended, b"chr1\t10\t20\ta\t0\t+\t42\n");
+
+        let other = read_records(&b"chr1\t30\t40\tb\n"[..]).unwrap();
+        let mut joined = Vec::new();
+        records[0]
+            .write_joined_column(&mut joined, &other[0], -6)
+            .unwrap();
+        assert_eq!(joined, b"chr1\t10\t20\ta\t0\t+\tchr1\t30\t40\tb\t-6\n");
     }
 
     #[test]

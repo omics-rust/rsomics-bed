@@ -5,6 +5,7 @@
 
 mod bed;
 mod cli;
+pub mod closest;
 pub mod cluster;
 pub mod complement;
 pub mod intersect;
@@ -18,6 +19,18 @@ pub mod subtract;
 pub mod window;
 
 pub use bed::{Genome, read_genome};
+
+/// Strand relationship required between two BED records.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum StrandFilter {
+    /// Ignore strand fields.
+    #[default]
+    Any,
+    /// Require matching strands.
+    Same,
+    /// Require opposing strands.
+    Opposite,
+}
 
 /// Execute the product command-line entry point.
 ///

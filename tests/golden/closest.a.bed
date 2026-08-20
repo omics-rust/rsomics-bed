@@ -1,0 +1,6 @@
+chr1	10	20	a-plus	0	+
+chr1	40	50	a-minus	0	-
+chr2	10	20	overlap	0	+
+chr3	10	20	same	0	+
+chr4	100	100	point	0	+
+chr5	10	20	absent	0	-

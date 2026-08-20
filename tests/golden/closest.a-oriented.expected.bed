@@ -1,0 +1,11 @@
+chr1	10	20	a-plus	0	+	chr1	0	5	left-first	0	+	-6
+chr1	10	20	a-plus	0	+	chr1	0	5	left-last	0	-	-6
+chr1	10	20	a-plus	0	+	chr1	25	30	right-first	0	+	6
+chr1	40	50	a-minus	0	-	chr1	55	60	second-right	0	-	-6
+chr1	40	50	a-minus	0	-	chr1	30	35	second-left	0	+	6
+chr2	10	20	overlap	0	+	chr2	12	18	overlap	0	+	0
+chr3	10	20	same	0	+	chr3	0	5	same	0	+	-6
+chr3	10	20	same	0	+	chr3	25	30	other	0	-	6
+chr4	100	100	point	0	+	chr4	90	100	point-left	0	+	0
+chr4	100	100	point	0	+	chr4	100	110	point-right	0	-	0
+chr5	10	20	absent	0	-	.	-1	-1	.	-1	.	-1
