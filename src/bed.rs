@@ -9,6 +9,13 @@ pub(crate) struct BedRecord {
     interval: Interval,
     raw: Vec<u8>,
     suffix_start: Option<usize>,
+    line_number: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Strand {
+    Forward,
+    Reverse,
 }
 
 impl BedRecord {
@@ -22,6 +29,38 @@ impl BedRecord {
 
     pub(crate) fn end(&self) -> u64 {
         self.interval.end()
+    }
+
+    pub(crate) fn strand(&self, label: &str) -> Result<Strand> {
+        match self.field(5, label, "strand")? {
+            b"+" => Ok(Strand::Forward),
+            b"-" => Ok(Strand::Reverse),
+            value => Err(invalid(format!(
+                "{label} BED line {}: invalid strand {:?}",
+                self.line_number,
+                String::from_utf8_lossy(value)
+            ))),
+        }
+    }
+
+    fn field(&self, index: usize, label: &str, field: &str) -> Result<&[u8]> {
+        let value = self
+            .raw
+            .split(|&byte| byte == b'\t')
+            .nth(index)
+            .ok_or_else(|| {
+                invalid(format!(
+                    "{label} BED line {}: missing {field}",
+                    self.line_number
+                ))
+            })?;
+        if value.is_empty() {
+            return Err(invalid(format!(
+                "{label} BED line {}: empty {field}",
+                self.line_number
+            )));
+        }
+        Ok(value)
     }
 
     pub(crate) fn write_raw(&self, output: &mut dyn Write) -> Result<()> {
@@ -44,6 +83,13 @@ impl BedRecord {
                 .rs_context("writing BED record")?;
         }
         output.write_all(b"\n").rs_context("writing BED record")
+    }
+
+    pub(crate) fn write_column(&self, output: &mut dyn Write, value: u64) -> Result<()> {
+        output
+            .write_all(&self.raw)
+            .rs_context("writing BED record")?;
+        writeln!(output, "\t{value}").rs_context("writing BED record")
     }
 }
 
@@ -75,6 +121,7 @@ struct ParsedRecord<'a> {
     interval: Interval<&'a str>,
     raw: &'a [u8],
     suffix_start: Option<usize>,
+    line_number: usize,
 }
 
 impl<R: Read> BedReader<BufReader<R>> {
@@ -100,6 +147,7 @@ impl<R: BufRead> BedReader<R> {
                 interval,
                 raw: record.raw.to_vec(),
                 suffix_start: record.suffix_start,
+                line_number: record.line_number,
             }
         }))
     }
@@ -191,6 +239,7 @@ fn parse_record(line: &[u8], line_number: usize) -> Result<ParsedRecord<'_>> {
         interval,
         raw: line,
         suffix_start: third_tab,
+        line_number,
     })
 }
 
@@ -360,6 +409,43 @@ mod tests {
     fn parser_reports_physical_line_number() {
         let error = read_records(&b"# header\nchr1\t10\t20\nchr1\tbad\t30\n"[..]).unwrap_err();
         assert!(error.to_string().contains("line 3"), "{error}");
+    }
+
+    #[test]
+    fn optional_fields_are_checked_only_when_requested() {
+        let mut records =
+            read_records(&b"# header\nchr1\t10\t20\nchr1\t20\t30\tname\t0\t-\n"[..]).unwrap();
+        let named = records.pop().unwrap();
+        let bed3 = records.pop().unwrap();
+
+        let error = bed3.strand("cluster").unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("cluster BED line 2: missing strand"),
+            "{error}"
+        );
+        assert_eq!(named.strand("closest A").unwrap(), Strand::Reverse);
+    }
+
+    #[test]
+    fn invalid_strands_fail_with_physical_lines() {
+        let records = read_records(&b"chr1\t20\t30\tname\t0\t.\n"[..]).unwrap();
+        let strand_error = records[0].strand("window B").unwrap_err();
+        assert!(
+            strand_error
+                .to_string()
+                .contains("window B BED line 1: invalid strand"),
+            "{strand_error}"
+        );
+    }
+
+    #[test]
+    fn appended_columns_preserve_original_fields() {
+        let records = read_records(&b"chr1\t10\t20\ta\t0\t+\r\n"[..]).unwrap();
+        let mut appended = Vec::new();
+        records[0].write_column(&mut appended, 42).unwrap();
+        assert_eq!(appended, b"chr1\t10\t20\ta\t0\t+\t42\n");
     }
 
     #[test]
