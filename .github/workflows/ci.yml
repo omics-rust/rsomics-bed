@@ -9,30 +9,82 @@ on:
 permissions:
   contents: read
 
+env:
+  CARGO_BUILD_JOBS: '2'
+  PYTHONDONTWRITEBYTECODE: '1'
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
   native:
     name: ${{ matrix.target }}
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
           - target: linux-x86_64
             runner: ubuntu-24.04
+            host: x86_64-unknown-linux-gnu
           - target: linux-aarch64
             runner: ubuntu-24.04-arm
+            host: aarch64-unknown-linux-gnu
           - target: macos-x86_64
             runner: macos-15-intel
+            host: x86_64-apple-darwin
           - target: macos-aarch64
             runner: macos-15
+            host: aarch64-apple-darwin
+    env:
+      NATIVE_TARGET: ${{ matrix.target }}
+      EXPECTED_HOST: ${{ matrix.host }}
 
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Prepare runner storage
+        run: |
+          set -euo pipefail
+          for pair in CARGO_HOME=cargo-home CARGO_TARGET_DIR=cargo-target RUSTUP_HOME=rustup-home TMPDIR=scratch XDG_CACHE_HOME=cache; do
+            name="${pair%%=*}"
+            path="$RUNNER_TEMP/${pair#*=}"
+            mkdir -p "$path"
+            printf '%s=%s\n' "$name" "$path" >> "$GITHUB_ENV"
+          done
+          mkdir -p "$RUNNER_TEMP/delivery"
+          python3 -B - <<'PY'
+          import os
+          from pathlib import Path
+          root = Path(os.environ['RUNNER_TEMP']).resolve(strict=True)
+          for name in ('cargo-home', 'cargo-target', 'rustup-home', 'scratch', 'cache'):
+              path = (root / name).resolve(strict=True)
+              assert path.is_relative_to(root) and path.stat().st_dev == root.stat().st_dev
+              print(path)
+          PY
+          git rev-parse HEAD
+          uname -a
+          df -h "$RUNNER_TEMP"
 
       - name: Install Rust 1.91
         uses: dtolnay/rust-toolchain@1.91.0
         with:
           components: clippy,rustfmt
+
+      - name: Verify actual native host and resolved target
+        run: |
+          set -euo pipefail
+          rustc -Vv | tee "$RUNNER_TEMP/delivery/rustc.txt"
+          cargo -V | tee "$RUNNER_TEMP/delivery/cargo.txt"
+          uname -a | tee "$RUNNER_TEMP/delivery/native-host.txt"
+          test "$(rustc -Vv | sed -n 's/^host: //p')" = "$EXPECTED_HOST"
+          cargo metadata --locked --no-deps --format-version 1 | python3 -B -c \
+            'import json,os,sys; assert json.load(sys.stdin)["target_directory"] == os.environ["CARGO_TARGET_DIR"]'
 
       - name: Install Linux oracle build dependencies
         if: runner.os == 'Linux'
@@ -41,9 +93,9 @@ jobs:
           sudo apt-get install -y libbz2-dev liblzma-dev zlib1g-dev
 
       - name: Build pinned bedtools 2.31.1 oracle
-        shell: bash
         run: |
           set -euo pipefail
+          exec > >(tee "$RUNNER_TEMP/delivery/oracle-build.stdout") 2> >(tee "$RUNNER_TEMP/delivery/oracle-build.stderr" >&2)
           archive="$RUNNER_TEMP/bedtools-2.31.1.tar.gz"
           curl --fail --location --retry 3 \
             https://github.com/arq5x/bedtools2/releases/download/v2.31.1/bedtools-2.31.1.tar.gz \
@@ -55,29 +107,79 @@ jobs:
           echo "$RUNNER_TEMP/bedtools2/bin" >> "$GITHUB_PATH"
 
       - name: Verify compatibility oracle
-        shell: bash
         run: |
           set -euo pipefail
-          test "$(bedtools --version)" = "bedtools v2.31.1"
+          bedtools --version | tee "$RUNNER_TEMP/delivery/oracle-version.txt"
+          test "$(cat "$RUNNER_TEMP/delivery/oracle-version.txt")" = "bedtools v2.31.1"
+          shasum -a 256 "$(command -v bedtools)" > "$RUNNER_TEMP/delivery/oracle-binary.sha256"
 
       - name: Format
-        if: matrix.target == 'linux-x86_64'
-        run: cargo fmt --all -- --check
+        run: |
+          set -euo pipefail
+          cargo fmt --all -- --check > "$RUNNER_TEMP/delivery/fmt.stdout" 2> "$RUNNER_TEMP/delivery/fmt.stderr"
 
       - name: Strict Clippy
-        if: matrix.target == 'linux-x86_64'
-        run: cargo clippy --locked --all-targets --all-features -- -D warnings
+        run: |
+          set -euo pipefail
+          cargo clippy --locked --all-targets --all-features -- -D warnings \
+            > "$RUNNER_TEMP/delivery/clippy.stdout" 2> "$RUNNER_TEMP/delivery/clippy.stderr"
+
+      - name: Rust documentation
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: |
+          set -euo pipefail
+          cargo doc --locked --no-deps --all-features \
+            > "$RUNNER_TEMP/delivery/rustdoc.stdout" 2> "$RUNNER_TEMP/delivery/rustdoc.stderr"
 
       - name: Test debug
-        run: cargo test --locked --all-features
+        run: |
+          set -euo pipefail
+          cargo test --locked --all-features \
+            > "$RUNNER_TEMP/delivery/debug.stdout" 2> "$RUNNER_TEMP/delivery/debug.stderr"
 
       - name: Test release
-        run: cargo test --release --locked --all-features
+        run: |
+          set -euo pipefail
+          cargo test --release --locked --all-features \
+            > "$RUNNER_TEMP/delivery/release.stdout" 2> "$RUNNER_TEMP/delivery/release.stderr"
 
-      - name: Verify package
-        if: matrix.target == 'linux-x86_64'
-        run: cargo package --locked
+      - name: Verify complete source package
+        run: |
+          set -euo pipefail
+          cargo metadata --locked --no-deps --format-version 1 > "$RUNNER_TEMP/delivery/package-metadata.json"
+          cargo package --locked --list > "$RUNNER_TEMP/delivery/package-files.txt"
+          cargo package --locked > "$RUNNER_TEMP/delivery/package.stdout" 2> "$RUNNER_TEMP/delivery/package.stderr"
+          python3 -B scripts/delivery.py source
+
+      - name: Test packaged release with pinned oracle
+        run: |
+          set -euo pipefail
+          cargo test --manifest-path "$PACKAGE_DIRECTORY/Cargo.toml" --release --locked --all-features \
+            > "$RUNNER_TEMP/delivery/packaged-tests.stdout" 2> "$RUNNER_TEMP/delivery/packaged-tests.stderr"
+
+      - name: Install and exercise packaged binary
+        run: |
+          set -euo pipefail
+          cargo install --path "$PACKAGE_DIRECTORY" --locked --root "$RUNNER_TEMP/installed" \
+            > "$RUNNER_TEMP/delivery/install.stdout" 2> "$RUNNER_TEMP/delivery/install.stderr"
+          python3 -B "$PACKAGE_DIRECTORY/scripts/delivery.py" smoke --binary "$RUNNER_TEMP/installed/bin/rsomics-bed"
 
       - name: Benchmark smoke
         if: matrix.target == 'linux-x86_64'
-        run: cargo bench --locked --bench operations -- --test
+        run: |
+          set -euo pipefail
+          cargo bench --locked --bench operations -- --test \
+            > "$RUNNER_TEMP/delivery/benchmark-smoke.stdout" 2> "$RUNNER_TEMP/delivery/benchmark-smoke.stderr"
+
+      - name: Assemble native delivery candidate
+        run: python3 -B scripts/delivery.py bundle --binary "$RUNNER_TEMP/installed/bin/rsomics-bed"
+
+      - name: Retain source and native delivery candidates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsomics-bed-delivery-${{ matrix.target }}-${{ github.sha }}
+          path: ${{ runner.temp }}/delivery/
+          if-no-files-found: error
+          retention-days: 90

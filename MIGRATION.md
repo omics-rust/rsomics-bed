@@ -1,5 +1,39 @@
 # Historical implementation migration
 
+## 0.2 delivery candidate
+
+The delivery-only change starts from clean owner
+`02b85a1a348c271e485cca629dc4e71fa075388a`, tree
+`49a916836bc119696a6845d97c03c992b1d44dec` (91 files). Every original source,
+test, golden, benchmark, Cargo manifest/lock and license body remains unchanged.
+Only product-local delivery/guard/notices and installation/CI documentation
+are added or updated; no API, operation or dependency is introduced.
+
+The new native gate exercises the complete pinned BEDTools 2.31.1 oracle on
+all four native target classes, verifies a clean exact-head Cargo source
+package, installs its binary, and checks one eleven-call installed lifecycle:
+version, help, the eight declared operations, and a malformed-input failure.
+Stdin sort output is reloaded into a JSON/named-output merge; golden bytes
+retain trailing fields, duplicate hits, signed closest/no-hit behavior and
+known ordering differences. The failure must preserve a pre-existing output.
+
+Source packages retain the complete Git bodies/modes, original manifest,
+normalized Cargo metadata, public library/docs and goldens. Native bundles
+contain one executable and the original enabled normal/build dependency terms;
+[licenses/provenance.json](licenses/provenance.json) distinguishes shipping,
+source/dev-only and upstream-attribution scopes. A clean exact-head native
+gate, original artifact adoption, and root's later public action are required
+before a GitHub release or fresh public-install acceptance. No registry retry
+or public-release success is recorded by this candidate.
+
+The retained performance decision stays bound to `d7b1507b178053a087862255d84a244e4921f192`
+and measured binary `9a55972f96e11bf087515b61799575505291d12d67902b4c965b8b9e32b51ff8`.
+Closest's higher RSS, stable sort/window ordering differences, merge's narrow
+win and the rejected candidate remain unchanged. No new delivery binary is
+claimed to have been timed. See [PERFORMANCE.md](PERFORMANCE.md).
+
+## Historical source disposition
+
 The initial product slice was reconstructed from these clean local revisions on
 2026-07-30:
 

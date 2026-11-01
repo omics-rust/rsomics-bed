@@ -17,10 +17,34 @@ Each operation accepts BED input from a file or standard input and writes BED
 to standard output unless `--output` is supplied. Run `rsomics-bed --help` or
 `rsomics-bed <subcommand> --help` for the complete command tree.
 
+## Installation and delivery status
+
+The eight-command 0.2.0 slice is a GitHub delivery candidate, not an available
+GitHub release yet. The registry still serves the earlier five-command 0.1.0;
+registry authorization is a separate gate and has not been retried.
+No coverage, BEDPE, reference-sequence, or multi-B extension is advertised.
+
+After a release is earned, the four native Linux/macOS x86_64/aarch64 archives
+are intended to contain one `rsomics-bed` executable, documentation, original
+license/notice bodies, and `BUILD.json`, with a `SHA256SUMS` companion. This
+records the actual native host/toolchain, source head, lock, binary and package
+identities; it is not a signing, minimum-OS, or cross-build guarantee.
+No release asset is implied by this preparation.
+
+To build the reviewed source checkout on this project's local Mac, use
+`scripts/guarded-cargo.sh install --path . --locked --root` with an explicitly
+external installation directory. The guard verifies mounted external paths
+and rejects Cargo storage overrides; its trusted `--exec` mode is not a sandbox
+for arbitrary tools or their output arguments. Other users may build the
+complete Cargo source package with `cargo install --path . --locked` in their
+own environment. [MIGRATION.md](MIGRATION.md) records the delivery boundary.
+
 Named outputs are written to a same-directory temporary file and atomically
-persisted only after the operation succeeds. Existing outputs therefore remain
-unchanged on parse, compatibility, or I/O failure. Paths that identify an input
-through spelling, normalization, symlink, or hard link are rejected. A new
+replaced only after the operation succeeds. Parse, compatibility, and I/O
+failures before that replacement leave an existing output unchanged. A later
+directory-sync error can return a nonzero exit after the new file has already
+replaced it; failure does not imply rollback after commit. Paths that identify
+an input through spelling, normalization, symlink, or hard link are rejected. A new
 output uses normal `0666 & !umask` creation permissions; replacing an existing
 output preserves its permission bits.
 
@@ -105,11 +129,21 @@ timing. Measurements, inputs, flags, and machine provenance are recorded in
 [PERFORMANCE.md](PERFORMANCE.md). A new release must retain a strict throughput
 or resource-use advantage on its declared hot paths.
 
+Those historical measurements belong to source
+`d7b1507b178053a087862255d84a244e4921f192` and executable SHA-256
+`9a55972f96e11bf087515b61799575505291d12d67902b4c965b8b9e32b51ff8`,
+not to a new delivery binary. Closest retains its RSS disadvantage, merge's
+1.11x margin is narrow, and the rejected closest candidate remains rejected.
+Delivery verification is not another benchmark or a universal memory claim.
+
 ## Origin
 
 This product consolidates team-owned historical rsomics implementations listed
 in [MIGRATION.md](MIGRATION.md). Compatibility behavior is checked against
 bedtools 2.31.1 and committed golden output.
 
-bedtools and COITrees are distributed under the MIT license. This independent
-Rust product is licensed under MIT OR Apache-2.0.
+The original upstream and dependency terms, identities and scope are in
+[THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md),
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and [licenses](licenses/).
+No BEDTools oracle executable is redistributed. This independent Rust product
+is licensed under MIT OR Apache-2.0.
