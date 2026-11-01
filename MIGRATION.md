@@ -1,6 +1,6 @@
 # Historical implementation migration
 
-## 0.2 delivery candidate
+## 0.2 GitHub delivery
 
 The delivery-only change starts from clean owner
 `02b85a1a348c271e485cca629dc4e71fa075388a`, tree
@@ -21,10 +21,12 @@ Source packages retain the complete Git bodies/modes, original manifest,
 normalized Cargo metadata, public library/docs and goldens. Native bundles
 contain one executable and the original enabled normal/build dependency terms;
 [licenses/provenance.json](licenses/provenance.json) distinguishes shipping,
-source/dev-only and upstream-attribution scopes. A clean exact-head native
-gate, original artifact adoption, and root's later public action are required
-before a GitHub release or fresh public-install acceptance. No registry retry
-or public-release success is recorded by this candidate.
+source/dev-only and upstream-attribution scopes. Clean exact-head native CI
+41348074250, complete original adoption, GitHub v0.2.0 and a fresh public
+Mac ARM eleven-call lifecycle pass for the immutable delivery commit
+`bcbee5f87aeda2e7664c279b32c5a3098635ca9b`. Registry publication remains
+separately held and unattempted; later documentation does not replace the
+release tag or assets.
 
 The retained performance decision stays bound to `d7b1507b178053a087862255d84a244e4921f192`
 and measured binary `9a55972f96e11bf087515b61799575505291d12d67902b4c965b8b9e32b51ff8`.

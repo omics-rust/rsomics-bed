@@ -19,17 +19,18 @@ to standard output unless `--output` is supplied. Run `rsomics-bed --help` or
 
 ## Installation and delivery status
 
-The eight-command 0.2.0 slice is a GitHub delivery candidate, not an available
-GitHub release yet. The registry still serves the earlier five-command 0.1.0;
-registry authorization is a separate gate and has not been retried.
+The eight-command slice is available as [GitHub v0.2.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.2.0).
+The registry still serves the earlier five-command 0.1.0; registry
+authorization is a separate gate and has not been retried.
 No coverage, BEDPE, reference-sequence, or multi-B extension is advertised.
 
-After a release is earned, the four native Linux/macOS x86_64/aarch64 archives
-are intended to contain one `rsomics-bed` executable, documentation, original
-license/notice bodies, and `BUILD.json`, with a `SHA256SUMS` companion. This
-records the actual native host/toolchain, source head, lock, binary and package
-identities; it is not a signing, minimum-OS, or cross-build guarantee.
-No release asset is implied by this preparation.
+The four native Linux/macOS x86_64/aarch64 archives contain one `rsomics-bed`
+executable, documentation, original license/notice bodies, and `BUILD.json`,
+with a `SHA256SUMS` companion. Actual four-native CI and source installation
+passed; a fresh public Mac ARM download also passed the eleven-call workflow.
+The immutable release remains at `bcbee5f87aeda2e7664c279b32c5a3098635ca9b`.
+BUILD records actual native host/toolchain, source head, lock, binary and
+package identities; it is not a signing, minimum-OS, or cross-build guarantee.
 
 To build the reviewed source checkout on this project's local Mac, use
 `scripts/guarded-cargo.sh install --path . --locked --root` with an explicitly
