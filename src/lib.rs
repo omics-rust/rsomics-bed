@@ -8,6 +8,7 @@ mod cli;
 pub mod closest;
 pub mod cluster;
 pub mod complement;
+pub mod coverage;
 pub mod intersect;
 mod interval_index;
 mod io;

@@ -10,7 +10,9 @@ use rsomics_common::{
 };
 
 use crate::io::open_input;
-use crate::{closest, cluster, complement, intersect, merge, read_genome, sort, subtract, window};
+use crate::{
+    closest, cluster, complement, coverage, intersect, merge, read_genome, sort, subtract, window,
+};
 
 const META: ToolMeta = ToolMeta {
     name: "rsomics-bed",
@@ -50,6 +52,83 @@ enum Command {
     Window(WindowArgs),
     /// Report the closest eligible B interval or intervals for each A
     Closest(ClosestArgs),
+    /// Measure coverage of pooled B intervals over each A record
+    Coverage(CoverageArgs),
+}
+
+#[derive(Debug, Args)]
+#[command(next_help_heading = "Input/output")]
+struct CoverageArgs {
+    /// BED file A; use - for standard input
+    #[arg(short = 'a', long, value_name = "BED")]
+    a: PathBuf,
+
+    /// BED files B; standard input is not supported
+    #[arg(short = 'b', long, value_name = "BED", num_args = 1.., required = true)]
+    b: Vec<PathBuf>,
+
+    /// Output BED file; omit or use - for standard output
+    #[arg(short, long, value_name = "BED")]
+    output: Option<PathBuf>,
+
+    /// Append only the number of qualifying overlaps
+    #[arg(long, conflicts_with_all = ["mean", "hist", "depth"], help_heading = "Reporting")]
+    counts: bool,
+
+    /// Append mean depth
+    #[arg(long, conflicts_with_all = ["counts", "hist", "depth"], help_heading = "Reporting")]
+    mean: bool,
+
+    /// Emit depth histograms and pooled A totals
+    #[arg(long, conflicts_with_all = ["counts", "mean", "depth"], help_heading = "Reporting")]
+    hist: bool,
+
+    /// Emit relative position and depth for every base of A
+    #[arg(short = 'd', long, conflicts_with_all = ["counts", "mean", "hist"], help_heading = "Reporting")]
+    depth: bool,
+
+    /// Require matching valid BED6 strands
+    #[arg(
+        short = 's',
+        long,
+        conflicts_with = "opposite_strand",
+        help_heading = "Selection"
+    )]
+    same_strand: bool,
+
+    /// Require opposing valid BED6 strands
+    #[arg(
+        short = 'S',
+        long,
+        conflicts_with = "same_strand",
+        help_heading = "Selection"
+    )]
+    opposite_strand: bool,
+
+    /// Minimum fraction of each A interval overlapped by a B candidate
+    #[arg(short = 'f', long, value_name = "FRACTION", help_heading = "Selection")]
+    minimum_a: Option<f32>,
+
+    /// Minimum fraction of each B candidate overlapped by A
+    #[arg(short = 'F', long, value_name = "FRACTION", help_heading = "Selection")]
+    minimum_b: Option<f32>,
+
+    /// Apply the A fraction to both A and B
+    #[arg(
+        short = 'r',
+        long,
+        conflicts_with = "minimum_b",
+        help_heading = "Selection"
+    )]
+    reciprocal: bool,
+
+    /// Accept either fraction requirement rather than requiring both
+    #[arg(short = 'e', long, help_heading = "Selection")]
+    either: bool,
+
+    /// Use BED12 blocks; explicit fraction selection is not yet supported
+    #[arg(long, help_heading = "Selection")]
+    split: bool,
 }
 
 #[derive(Debug, Args)]
@@ -353,6 +432,51 @@ pub(crate) fn run() -> process::ExitCode {
 fn execute(cli: Cli) -> Result<()> {
     let json = cli.output.json;
     match cli.command {
+        Command::Coverage(args) => {
+            require_named_json_output(json, args.output.as_deref())?;
+            for path in &args.b {
+                reject_stdin_b(path)?;
+            }
+            reject_output_alias(
+                args.output.as_deref(),
+                std::iter::once(Some(args.a.as_path()))
+                    .chain(args.b.iter().map(|path| Some(path.as_path()))),
+            )?;
+            let options = coverage::CoverageOptions {
+                mode: if args.counts {
+                    coverage::CoverageMode::Counts
+                } else if args.mean {
+                    coverage::CoverageMode::Mean
+                } else if args.hist {
+                    coverage::CoverageMode::Histogram
+                } else if args.depth {
+                    coverage::CoverageMode::Depth
+                } else {
+                    coverage::CoverageMode::Summary
+                },
+                strand: if args.same_strand {
+                    crate::StrandFilter::Same
+                } else if args.opposite_strand {
+                    crate::StrandFilter::Opposite
+                } else {
+                    crate::StrandFilter::Any
+                },
+                split: args.split,
+                minimum_a: args.minimum_a,
+                minimum_b: args.minimum_b,
+                reciprocal: args.reciprocal,
+                either: args.either,
+            };
+            let a = open_input(Some(&args.a))?;
+            let b = args
+                .b
+                .iter()
+                .map(|path| open_input(Some(path)))
+                .collect::<Result<Vec<_>>>()?;
+            write_output(args.output.as_deref(), |output| {
+                coverage::coverage(a, b, output, options)
+            })
+        }
         Command::Sort(args) => {
             require_named_json_output(json, args.output.as_deref())?;
             reject_output_alias(args.output.as_deref(), [args.input.as_deref()])?;

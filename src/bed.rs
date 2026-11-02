@@ -41,6 +41,48 @@ impl BedRecord {
         required_strand(&self.raw, self.line_number, label)
     }
 
+    pub(crate) fn blocks(&self, label: &str) -> Result<Vec<(u64, u64)>> {
+        if self.raw.split(|&byte| byte == b'\t').count() < 12 {
+            return Ok(vec![virtual_bounds(self, label)?]);
+        }
+        let context = format!("{label} BED line {}", self.line_number);
+        let count = parse_u64(
+            self.field(9, label, "block count")?,
+            &context,
+            "block count",
+        )?;
+        let sizes = self.field(10, label, "block sizes")?;
+        let starts = self.field(11, label, "block starts")?;
+        let parse_list = |bytes: &[u8], name: &str| -> Result<Vec<u64>> {
+            let bytes = bytes.strip_suffix(b",").unwrap_or(bytes);
+            bytes
+                .split(|&byte| byte == b',')
+                .map(|value| parse_u64(value, &context, name))
+                .collect()
+        };
+        let sizes = parse_list(sizes, "block size")?;
+        let starts = parse_list(starts, "block start")?;
+        if count == 0 || sizes.len() as u64 != count || starts.len() as u64 != count {
+            return Err(invalid(format!(
+                "{context}: block count does not match block lists"
+            )));
+        }
+        starts
+            .into_iter()
+            .zip(sizes)
+            .map(|(offset, size)| {
+                let start = self.start().checked_add(offset);
+                let end = start.and_then(|start| start.checked_add(size));
+                match (start, end) {
+                    (Some(start), Some(end)) if end <= self.end() => Ok((start, end)),
+                    _ => Err(invalid(format!(
+                        "{context}: block extends outside the BED interval"
+                    ))),
+                }
+            })
+            .collect()
+    }
+
     fn field(&self, index: usize, label: &str, field: &str) -> Result<&[u8]> {
         required_field(&self.raw, self.line_number, index, label, field)
     }
