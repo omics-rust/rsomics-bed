@@ -22,7 +22,9 @@ to standard output unless `--output` is supplied. Run `rsomics-bed --help` or
 The eight-command slice is available as [GitHub v0.2.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.2.0).
 The registry still serves the earlier five-command 0.1.0; registry
 authorization is a separate gate and has not been retried.
-No coverage, BEDPE, reference-sequence, or multi-B extension is advertised.
+That immutable release does not include coverage, BEDPE, reference-sequence,
+or multi-B extensions. Main is under active development; published delivery
+guarantees refer to the release tag rather than the current checkout.
 
 The four native Linux/macOS x86_64/aarch64 archives contain one `rsomics-bed`
 executable, documentation, original license/notice bodies, and `BUILD.json`,

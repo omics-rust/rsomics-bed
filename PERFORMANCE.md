@@ -1,8 +1,9 @@
 # Performance evidence
 
-The release benchmark is `cargo bench --bench operations`. It compares every
-current `rsomics-bed` operation with bedtools 2.31.1 on deterministic
-multi-chromosome fixtures while discarding timed output.
+The historical release benchmark is `cargo bench --bench operations`. It
+compares the eight-operation slice with bedtools 2.31.1 on deterministic
+multi-chromosome fixtures while discarding timed output. The unreleased
+coverage candidate has a separate full-output campaign below.
 
 The fixture is designed to exercise work rather than process startup alone:
 
@@ -17,6 +18,64 @@ Results are recorded only after the complete output of every operation matches
 the pinned oracle and the full test suite passes. Each release record includes
 the exact source and binary identities, fixture hashes, command flags, timing
 distribution, peak-memory method, and a per-operation decision.
+
+## 2026-11-02 unreleased coverage candidate: Mac ARM gate
+
+Measured source is `3b2314a6912a849b21e7afbbb86b45fd8d6e294e`.
+Exact-head native CI 41442092689 passed on Linux/macOS x86_64/aarch64:
+103 debug, release and packaged tests per host, plus a twelve-call installed
+nine-operation lifecycle. This does not replace immutable GitHub 0.2 assets
+or settle the unsupported split-plus-explicit-fraction compatibility choice.
+
+The performance host is Apple M2, arm64, Darwin 27.2.0, 8 GiB RAM. Tools:
+
+- Rust 1.91.0; measured native binary 1,608,240 bytes, SHA256
+  `c1ae356bec9e27a663c8ae9c98b9ae6365732cae4bb3233393031a5ae7d07a73`;
+- BEDTools 2.31.1 Homebrew executable 1,691,808 bytes, SHA256
+  `fc994e1fcfdce8ce8591630d71f21fe67e2275c2a8d967dc0e3dfb4cfa4677a3`;
+- runner SHA256
+  `7326a0095032e45d7d37682614b05b880c61e22ae9c5c5293dc3ad05948afdf4`.
+
+The already retained RSeQC hg19 RefSeq annotation archive is 2,567,192 bytes,
+SHA256 `eb7070cfb52b9011c132346fd27baffb8a7acf3c034ebf996cebd52fbb52aa19`.
+No download or synthetic biological labels are involved. B contains 584,846
+exon blocks, retaining isoform duplicates. Sparse A contains 242,221 merged
+exon-union intervals; nested A contains 61,177 original transcript spans.
+The shapes have 584,846 and 3,093,393 candidate overlaps, maximum fan-out 78 and 2,172.
+This is annotation-derived interval coverage, not sequencing-read depth or
+evidence of a biological effect.
+
+Each command includes opening inputs, building the B index and complete stdout
+generation into a fresh file. Summary has no reporting flag; count/histogram
+use `--counts`/`--hist` natively and `-counts`/`-hist` upstream. Each tool/profile
+has one warmup and five alternating paired measurements: 72 executions total.
+Every exit is zero and every complete output matches its profile baseline
+byte for byte. All 72 outputs, 620,841,012 bytes total, and resource logs remain
+retained. No named-output durability asymmetry is included in these stdout runs.
+
+| Shape / report | Native median s | BEDTools median s | Speedup | RSS MB, native / BEDTools |
+|---|---:|---:|---:|---:|
+| sparse summary | 0.2525 | 0.6086 | 2.41x | 35.52 / 201.11 |
+| sparse counts | 0.2220 | 0.5487 | 2.47x | 35.47 / 169.98 |
+| sparse histogram | 0.2699 | 1.0442 | 3.87x | 35.52 / 203.51 |
+| nested summary | 0.2353 | 2.0760 | 8.82x | 35.55 / 197.36 |
+| nested counts | 0.1800 | 0.8584 | 4.77x | 35.42 / 189.46 |
+| nested histogram | 0.2843 | 24.2916 | 85.46x | 35.55 / 198.28 |
+
+All six wall-time and maximum-process-RSS populations are fully separated in
+the native direction. RSS uses macOS `time -l` bytes, displayed above as decimal
+MB. Wall includes wrapper launch and parent polling at 10 ms; raw `time` real,
+user/system and resource records are retained. The strict throughput and
+resource-use gates pass for these inputs. The 85x result applies only to nested
+histograms; no universal speed, cold-cache, thread-scaling, physical-I/O or
+aggregate-tree-memory claim is made. Later rebuilt binaries do not inherit
+these measured executable hashes.
+
+[Control-plane adoption](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-coverage-performance-2026-11-02.json)
+retains exact input hashes, distributions, output identities and the sealed
+metadata inventory. Local originals:
+`/Volumes/KIOXIA/Developments/tmp/bed-coverage-performance-20261102.cGrqBK`.
+This is performance acceptance, not a new publication.
 
 ## 2026-08-20 0.2 candidate Linux gate
 
