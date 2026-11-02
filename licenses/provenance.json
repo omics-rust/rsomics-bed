@@ -705,7 +705,7 @@
       "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
     }
   },
-  "lock_sha256": "ff18dd7bd0c8cd8307bdc19f37d1a8ba74a40e7540d8c152fcf0379858af5ac6",
+  "lock_sha256": "b45d0a422e7a0c357e6957816ad0c03f21031ea5851769d3ae752a0eb98d9806",
   "packages": {
     "registry+https://github.com/rust-lang/crates.io-index#anstream@1.0.0": {
       "archive_sha256_verified": true,
