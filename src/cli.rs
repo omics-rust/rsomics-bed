@@ -1,5 +1,6 @@
 //! Command-line parsing and dispatch for the product binary.
 
+mod genomecov;
 mod map;
 
 use std::path::{Path, PathBuf};
@@ -61,6 +62,8 @@ enum Command {
     Annotate(AnnotateArgs),
     /// Append reductions of overlapping B columns to sorted A records
     Map(map::Args),
+    /// Report genome-wide coverage tracks or depth histograms from grouped BED
+    Genomecov(genomecov::Args),
 }
 
 #[derive(Debug, Args)]
@@ -486,6 +489,7 @@ fn execute(cli: Cli) -> Result<()> {
     let json = cli.output.json;
     match cli.command {
         Command::Map(args) => map::execute(args, json),
+        Command::Genomecov(args) => genomecov::execute(args, json),
         Command::Annotate(args) => {
             require_named_json_output(json, args.output.as_deref())?;
             for path in &args.files {

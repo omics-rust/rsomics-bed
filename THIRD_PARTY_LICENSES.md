@@ -2,7 +2,7 @@
 
 ## BEDTools
 
-BEDTools 2.31.1 is the external behavior oracle for the eight declared BED
+BEDTools 2.31.1 is the external behavior oracle for the declared BED
 operations and their committed golden fixtures. The pinned source revision is
 `705ccfdf2c9a77d71560c8adcece0663c2f5e18e` (`v2.31.1`). The original root
 `LICENSE` body is retained unchanged as
@@ -17,6 +17,11 @@ The CI executable is built separately from the checksum-pinned release
 archive; neither that executable nor its source is redistributed in the
 native BED bundle. This root notice is not an assertion that every upstream
 component has identical terms or permission to copy future components.
+
+The genomecov reconstruction uses the pinned operation, parser and block
+handling as behavior references, not copied implementation. Those source
+members carry GPL notices; they are not included in the native bundle or
+presented as uniformly covered by the upstream root notice.
 
 ## COITrees and other locked Rust dependencies
 

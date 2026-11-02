@@ -1,5 +1,24 @@
 # Historical implementation migration
 
+## Genome coverage tracks, unreleased
+
+`rsomics-bed-genomecov@0087cf10fc15` is retained as fixture and algorithmic
+reference only (classification3). The product operation uses the existing
+strict BED/genome reader, product-private sparse depth events and atomic output,
+not the old all-chromosome loader or permissive strand parser. No micro-crate,
+dependency or foundation is added. The private significant-digit formatter is
+shared with map without changing its implementation.
+
+BEDTools2.31.1 owns chromosome encounter order after strand selection, binary32
+fractions/scaling, point expansion and exact-width BED12 splitting. BED12+ is
+treated as an outer span here; other product operations keep their existing
+block contracts. The final bedGraph run retains the upstream uncapped-max
+quirk. Selected zero-origin points, unknown contigs, spans beyond declared
+bounds and missing endpoint strands fail explicitly rather than inheriting
+unsafe indexing or implicit strand assumptions. Initial v0.3.0 delivery and
+its historical performance identities remain unchanged; new performance,
+native qualification and publication are separate gates.
+
 ## 0.2 GitHub delivery
 
 The delivery-only change starts from clean owner

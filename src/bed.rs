@@ -62,6 +62,10 @@ impl BedRecord {
         if self.raw.split(|&byte| byte == b'\t').count() < 12 {
             return Ok(vec![virtual_bounds(self, label)?]);
         }
+        self.blocks_in(label, (self.start(), self.end()))
+    }
+
+    pub(crate) fn blocks_in(&self, label: &str, bounds: (u64, u64)) -> Result<Vec<(u64, u64)>> {
         let context = format!("{label} BED line {}", self.line_number);
         let count = parse_u64(
             self.field(9, label, "block count")?,
@@ -88,10 +92,10 @@ impl BedRecord {
             .into_iter()
             .zip(sizes)
             .map(|(offset, size)| {
-                let start = self.start().checked_add(offset);
+                let start = bounds.0.checked_add(offset);
                 let end = start.and_then(|start| start.checked_add(size));
                 match (start, end) {
-                    (Some(start), Some(end)) if end <= self.end() => Ok((start, end)),
+                    (Some(start), Some(end)) if end <= bounds.1 => Ok((start, end)),
                     _ => Err(invalid(format!(
                         "{context}: block extends outside the BED interval"
                     ))),
