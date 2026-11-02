@@ -11,9 +11,13 @@ rsomics-bed complement
 rsomics-bed cluster
 rsomics-bed window
 rsomics-bed closest
+rsomics-bed coverage
+rsomics-bed annotate
+rsomics-bed map
 ```
 
-Each operation accepts BED input from a file or standard input and writes BED
+Query input accepts a file or standard input; secondary annotation inputs
+require files. Each operation writes BED
 to standard output unless `--output` is supplied. Run `rsomics-bed --help` or
 `rsomics-bed <subcommand> --help` for the complete command tree.
 
@@ -25,6 +29,11 @@ authorization is a separate gate and has not been retried.
 That immutable release does not include coverage, BEDPE, reference-sequence,
 or multi-B extensions. Main is under active development; published delivery
 guarantees refer to the release tag rather than the current checkout.
+
+Main additionally implements `coverage`, `annotate`, and sorted `map`; these
+are not included in the immutable eight-command release. The eleven-command
+candidate passes four-native tests and installed workflows. New operations
+retain separate representative performance evidence described below.
 
 The four native Linux/macOS x86_64/aarch64 archives contain one `rsomics-bed`
 executable, documentation, original license/notice bodies, and `BUILD.json`,
@@ -81,6 +90,27 @@ I/O failures use the stable common exit codes 1, 2, and 4 respectively.
   single-B contract includes strand and different-name filters, overlap
   exclusion, unsigned or signed distances, and all/first/last tie selection.
 
+- `coverage` reports overlap counts, covered bases/fractions or depth
+  histograms, with strand, block and fraction selection.
+- `annotate` appends independent counts, fractions or both for multiple B
+  files; files are not pooled into one annotation.
+- `map` reduces selected columns of sorted B records overlapping each sorted
+  A record. Its23 operations include numeric summaries, counts and text lists.
+  Columns and operations broadcast when either list has one item. Empty B is
+  rejected; selected invalid/non-finite numeric values are errors.
+
+`coverage` and `map` currently reject split-block selection combined with an
+explicit fraction, reciprocal or either-fraction flag. Ordinary split-block
+selection is supported; the combined aggregate-fraction policy is not claimed.
+`map -o` names the output file, unlike BEDTools where it selects reductions;
+use `--operations` for reductions.
+
+Sorted `map` preserves boundary point hits independent of equal-start A/B
+record order. BEDTools2.31.1 can lose these hits; the two deliberate repairs
+are `BEDMAP-2311-POINT-CACHE-LOSS` and
+`BEDMAP-2311-POINT-LOOKAHEAD-LOSS`. Map uses private widened signed virtual
+bounds, so a point at0-0 is supported without emitting negative coordinates.
+
 All operations skip blank lines, `#` comments, and every line whose bytes begin
 with lowercase `track` or `browser`, matching bedtools 2.31.1. Consequently,
 chromosome names with either lowercase prefix are interpreted as header lines.
@@ -94,7 +124,8 @@ panicked. Relation operations retain B bytes in one contiguous buffer and add
 only the file and coordinate orderings their output contracts consume.
 `subtract` builds a separate merged coverage map and supports the full nonzero
 `u64` coordinate domain without constructing an unused overlap tree. All
-operations reject zero-length widening outside the supported `u64` domain.
+indexed operations retain their documented nonnegative virtual-bound limits;
+the map-private signed virtual model does not change those contracts.
 
 `intersect` and `subtract` also intentionally reject a zero-length A or B
 record at `0-0`. bedtools 2.31.1 accepts such records, but its virtual interval
@@ -138,6 +169,14 @@ Those historical measurements belong to source
 not to a new delivery binary. Closest retains its RSS disadvantage, merge's
 1.11x margin is narrow, and the rejected closest candidate remains rejected.
 Delivery verification is not another benchmark or a universal memory claim.
+
+New full RefSeq-derived workflows on Apple M2 retain complete output
+comparisons. Coverage summary/count/histogram improves wall and process RSS;
+dual-file annotate both-mode has median native/source wall0.392/37.403s and
+RSS56.9/175.0MB. Sorted map has median wall0.577/0.470s and RSS4.31/4.98MB:
+it is about23percent slower but uses13.5percent less peak process memory.
+Map qualifies a resource-use advantage, not a throughput advantage. See
+[PERFORMANCE.md](PERFORMANCE.md) for source and executable bindings and limits.
 
 ## Origin
 

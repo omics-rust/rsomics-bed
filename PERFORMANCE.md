@@ -1,5 +1,44 @@
 # Performance evidence
 
+## Unreleased annotation and mapping workflows
+
+These full RefSeq-derived annotation workloads are distinct from the
+eight-operation historical measurements below. Each retains complete output
+comparisons, raw resource stderr and measured executable identities in the
+rsomics-world control plane. Results are Apple M2/arm64 single-process
+measurements, not thread-scaling, cold-cache, physical-I/O or biological claims.
+
+Coverage source3b2314a6912a849b21e7afbbb86b45fd8d6e294e passes72 complete
+output comparisons for sparse/nested summary, count and histogram workflows.
+The measured median speedups range2.41–85.46x, with the85x result specific to
+nested histogram. See control-plane receipt
+`.autopilot/oracles/bed-coverage-performance-2026-11-02.json`.
+
+Annotate sourcecdf736337d8bd63b2770723a8a667f7af83409b9 maps61177 transcript
+spans independently against584846 exon records and242221 merged-exon intervals
+in both-mode. Twelve complete outputs match. Median native/source wall is
+0.391555291/37.402949750s and peak-process RSS56885248/175046656 bytes.
+Measured native SHA2569166adf1b9e7150d7ecc04bcc95cb5db415000fa64ac82688dc6343de0c79bd9.
+See `.autopilot/oracles/bed-annotate-performance-2026-11-02.json`.
+
+Map sourcebcf65d7accdf4ff956680cfdef8e5d4eeb9634f8 uses all61177 transcript
+spans and584846 exon records, stably sorted by chromosome bytes/start outside
+both timed tools. Columns2,3,4 use min,max,count with precision10. This reports
+overlapping-exon coordinate envelope/count, not union length. Two warmups and
+five alternating measured pairs retain12 byte-identical outputs, each3826085
+bytes SHA256beb6be06d30f27cb771ebe047dbac799d6d7867a59fffe6d0e467205e8943ba8.
+Median native/source wall is0.577190375/0.469887792s; peak-process RSS is
+4308992/4980736 bytes. Native is22.84percent slower, while RSS is13.49percent
+lower (671744 bytes); all native RSS samples are below all source samples.
+This meets the resource-use branch of the release rule, not throughput.
+Measured native SHA2568c79604343095737b0aa8d79b14728e06dbba21ca26bd4da5044db6ae20c38bc.
+See `.autopilot/oracles/bed-map-performance-2026-11-03.json`.
+
+The source oracle for annotate/map is BEDTools2.31.1, executable SHA256
+fc994e1fcfdce8ce8591630d71f21fe67e2275c2a8d967dc0e3dfb4cfa4677a3.
+Later documentation or delivery binaries do not inherit these exact binary
+measurements. These records do not themselves constitute a new public release.
+
 The historical release benchmark is `cargo bench --bench operations`. It
 compares the eight-operation slice with bedtools 2.31.1 on deterministic
 multi-chromosome fixtures while discarding timed output. The unreleased
