@@ -20,7 +20,9 @@ fn run(a: &[u8], b: &[u8], flags: &[&str]) -> std::process::Output {
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child.stdin.take().unwrap().write_all(a).unwrap();
+    if let Err(error) = child.stdin.take().unwrap().write_all(a) {
+        assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe, "{error}");
+    }
     child.wait_with_output().unwrap()
 }
 
@@ -188,6 +190,7 @@ fn coverage_pooled_b_json_and_transactional_failures() {
 
 #[test]
 fn coverage_rejects_unsupported_and_invalid_selections() {
+    let large_a = A.repeat(16_384);
     for flags in [
         vec!["--split", "-f", "0.5"],
         vec!["-f", "NaN"],
@@ -199,7 +202,7 @@ fn coverage_rejects_unsupported_and_invalid_selections() {
         vec!["--sorted"],
         vec!["--header"],
     ] {
-        let result = run(A, B, &flags);
+        let result = run(&large_a, B, &flags);
         assert!(!result.status.success(), "unexpected success for {flags:?}");
     }
     let result = run(
