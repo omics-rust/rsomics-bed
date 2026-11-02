@@ -24,28 +24,23 @@ to standard output unless `--output` is supplied. Run `rsomics-bed --help` or
 
 ## Installation and delivery status
 
-The eleven-command slice is available as [GitHub v0.3.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.3.0).
-The registry still serves the earlier five-command 0.1.0; registry
-authorization is a separate gate and has not been retried.
-That release includes coverage, annotation and sorted mapping, but not BEDPE,
-reference-sequence or later multi-B extensions. Main is under active development; published delivery
-guarantees refer to the release tag rather than the current checkout.
-
-The older eight-command [v0.2.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.2.0)
-and its assets remain unchanged. New operations retain separate representative
-performance evidence described below.
-
-Current source prepares the twelve-command **0.4.0 release candidate**, adding
-`genomecov`. It is not included in v0.3.0 and has not been published. Its
-implementation has four-native correctness and representative full-genome
-performance evidence; the versioned candidate still requires exact-head native
-packaging, release review and publication.
+The twelve-command product is available as [GitHub v0.4.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.4.0),
+adding `genomecov`. Release 432026368 was published at 2026-11-02T22:18:19Z from
+`5e5b709d00c07977ce81deb0f7f0f70fece91c4a`.
+The registry sparse index still lists only the earlier five-command 0.1.0;
+registry authorization remains held and has not been retried.
+The older [v0.2.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.2.0)
+and [v0.3.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.3.0)
+tags and assets remain unchanged. Published delivery guarantees refer to the
+release tag rather than the current checkout.
 
 The four native Linux/macOS x86_64/aarch64 archives contain one `rsomics-bed`
 executable, documentation, original license/notice bodies, and `BUILD.json`,
-with a `SHA256SUMS` companion. Actual four-native CI and source installation
-passed; a fresh public Mac ARM download also passed the fourteen-call workflow.
-The immutable v0.3.0 release is at `bc40084ccc2d3837384da1377d4d57f0600fcb75`.
+with a `SHA256SUMS` companion. Exact-head CI 41532198240 passed 126 tests per
+debug/release/packaged profile and the 15-call, twelve-operation installed
+lifecycle on all four native targets. A fresh anonymous public Mac ARM download
+passed the same lifecycle; its source crate matched all 266 Git bodies and modes
+without another source compilation.
 BUILD records actual native host/toolchain, source head, lock, binary and
 package identities; it is not a signing, minimum-OS, or cross-build guarantee.
 
@@ -200,7 +195,7 @@ The full-genome `genomecov` campaign on shared Linux Xeon Gold 6238R uses all
 native/source wall is 0.21/113.77s; zero-inclusive bedGraph is 0.36/20.80s.
 Measured maximum-process RSS is 5.51/1,998.32MB in both modes. These are scoped
 full-workflow results bound to the c6e35 implementation and measured Linux
-executables, not measurements of a future release binary or other modes.
+executables, not measurements of the 0.4.0 release binaries or other modes.
 
 ## Origin
 

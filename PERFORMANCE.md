@@ -1,11 +1,18 @@
 # Performance evidence
 
-## 0.4.0 candidate: full-genome coverage tracks
+## 0.4.0: full-genome coverage tracks
 
 Implementation c6e35f8650e812d7dbaaab1e8e2a9c1894e0c1b6 passes exact-head
 four-native CI41519713617, with126 tests per debug/release/packaged profile and
-15 installed calls across twelve operations. The0.4.0 versioned release gate
-is separate; immutable v0.3.0 assets and earlier measured binaries are unchanged.
+15 installed calls across twelve operations.
+
+[GitHub v0.4.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.4.0)
+(release 432026368) was published at 2026-11-02T22:18:19Z from
+`5e5b709d00c07977ce81deb0f7f0f70fece91c4a`. Its exact-head CI 41532198240 passed
+the same 126-test profiles and 15-call lifecycle on all four native targets;
+fresh anonymous public Mac ARM installation also passed 15 calls across twelve
+operations. These delivery checks do not retime the release binaries: the
+measurements below retain their c6e35 source and executable identities.
 
 One representative campaign uses all584846 retained RefSeq exon records
 (28597646B, SHA2569fe2006b8aa58653b0f18141451473af71dc5c9ed3274ea90e0b3b627fd684bb)

@@ -1,11 +1,11 @@
 # Historical implementation migration
 
-## 0.4.0 candidate: genome coverage tracks
+## 0.4.0 GitHub delivery: genome coverage tracks
 
-The twelve-operation candidate adds `genomecov` to the eleven operations in
+The twelve-operation release adds `genomecov` to the eleven operations in
 immutable GitHub v0.3.0 at bc40084ccc2d3837384da1377d4d57f0600fcb75.
 The older v0.2.0 and v0.3.0 tags/assets are not replaced. `unionbedg`, BAM
-coverage and paired-read fragment modes are not part of this release candidate.
+coverage and paired-read fragment modes are not part of this release.
 
 `rsomics-bed-genomecov@0087cf10fc15` is retained as fixture and algorithmic
 reference only (classification3). The product operation uses the existing
@@ -24,9 +24,17 @@ unsafe indexing or implicit strand assumptions. Implementation c6e35 passes
 four-native correctness:126 tests per debug/release/packaged profile and a
 15-call installed lifecycle across twelve operations. Its accepted full-genome
 histogram/zero-inclusive-bedGraph workflow retains exact output and measured
-Linux executable identities in PERFORMANCE.md. Versioned0.4.0 exact-head native
-qualification and publication remain separate gates. The registry hold is
-unchanged and no registry retry is implied.
+Linux executable identities in PERFORMANCE.md, not measurements of the 0.4.0
+release binaries.
+
+GitHub release 432026368 was published at 2026-11-02T22:18:19Z as
+[v0.4.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.4.0), at
+`5e5b709d00c07977ce81deb0f7f0f70fece91c4a`. Exact-head CI 41532198240 passed 126
+tests per debug/release/packaged profile and 15 installed calls across twelve
+operations on all four native targets. Fresh anonymous public Mac ARM
+installation passed the same 15-call lifecycle; the downloaded source crate
+matched 266 Git bodies and modes without compilation. The registry sparse index
+still lists only 0.1.0; authorization remains held without a retry.
 
 ## 0.2 GitHub delivery
 
