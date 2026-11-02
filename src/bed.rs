@@ -33,6 +33,10 @@ impl BedRecord {
         self.interval.end()
     }
 
+    pub(crate) fn field_count(&self) -> usize {
+        self.raw.split(|&byte| byte == b'\t').count()
+    }
+
     pub(crate) fn name(&self, label: &str) -> Result<&[u8]> {
         self.field(3, label, "name")
     }

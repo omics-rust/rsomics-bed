@@ -3,12 +3,14 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
+pub mod annotate;
 mod bed;
 mod cli;
 pub mod closest;
 pub mod cluster;
 pub mod complement;
 pub mod coverage;
+mod depth;
 pub mod intersect;
 mod interval_index;
 mod io;

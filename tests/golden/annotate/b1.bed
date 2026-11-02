@@ -1,0 +1,6 @@
+chr1	0	1	left	0	+
+chr1	10	10	point	0	+
+chr1	9	10	left-point-base	0	+
+chr1	10	11	right-point-base	0	+
+chr1	90	95	partial	0	+
+chr1	90	95	duplicate	0	-

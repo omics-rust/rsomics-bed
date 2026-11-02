@@ -7,6 +7,7 @@ use rsomics_common::{Context, Result};
 
 use crate::StrandFilter;
 use crate::bed::{BedReader, BedRecord, Strand, invalid, virtual_bounds};
+use crate::depth::DepthBuffer;
 use crate::interval_index::{IntervalIndex, IntervalIndexBuilder};
 
 /// Coverage columns appended to each original A record.
@@ -129,62 +130,6 @@ impl CoverageIndex {
     }
 }
 
-#[derive(Clone, Copy)]
-struct DepthRun {
-    start: u64,
-    end: u64,
-    depth: usize,
-}
-
-#[derive(Default)]
-struct DepthBuffer {
-    events: Vec<(u64, bool)>,
-    runs: Vec<DepthRun>,
-    histogram: BTreeMap<usize, u64>,
-}
-
-impl DepthBuffer {
-    fn add(&mut self, start: u64, end: u64) {
-        if start < end {
-            self.events.push((start, true));
-            self.events.push((end, false));
-        }
-    }
-
-    fn reduce(&mut self, start: u64, end: u64) {
-        self.runs.clear();
-        self.histogram.clear();
-        self.events.sort_unstable_by_key(|event| event.0);
-        let mut cursor = start;
-        let mut depth = 0;
-        let mut event = 0;
-        while event < self.events.len() {
-            let position = self.events[event].0;
-            self.push_run(cursor, position, depth);
-            let mut starts = 0;
-            let mut ends = 0;
-            while event < self.events.len() && self.events[event].0 == position {
-                if self.events[event].1 {
-                    starts += 1;
-                } else {
-                    ends += 1;
-                }
-                event += 1;
-            }
-            depth = depth + starts - ends;
-            cursor = position;
-        }
-        self.push_run(cursor, end, depth);
-    }
-
-    fn push_run(&mut self, start: u64, end: u64, depth: usize) {
-        if start < end {
-            self.runs.push(DepthRun { start, end, depth });
-            *self.histogram.entry(depth).or_default() += end - start;
-        }
-    }
-}
-
 /// Pool B inputs and append coverage measurements to each A record in input order.
 ///
 /// BED12 split overlap counts refer to overlapping block pairs. Fractions and
@@ -230,7 +175,7 @@ pub fn coverage<R: Read>(
         } else {
             Vec::new()
         };
-        depths.events.clear();
+        depths.clear_events();
         let mut count = 0_usize;
         for &id in &candidates {
             let eligible = match options.strand {
@@ -282,7 +227,7 @@ pub fn coverage<R: Read>(
         )?;
         if options.mode == CoverageMode::Histogram {
             total_length += u128::from(length);
-            for (&depth, &bases) in &depths.histogram {
+            for (&depth, &bases) in depths.histogram() {
                 *aggregate.entry(depth).or_default() += u128::from(bases);
             }
         }
@@ -314,7 +259,7 @@ fn report(
 ) -> Result<()> {
     match mode {
         CoverageMode::Summary => {
-            let covered = length - depths.histogram.get(&0).copied().unwrap_or(0);
+            let covered = depths.covered_bases(length);
             record.write_column(
                 output,
                 format_args!(
@@ -325,7 +270,7 @@ fn report(
         }
         CoverageMode::Mean => {
             let sum: u128 = depths
-                .histogram
+                .histogram()
                 .iter()
                 .map(|(&depth, &bases)| depth as u128 * u128::from(bases))
                 .sum();
@@ -335,7 +280,7 @@ fn report(
             )?;
         }
         CoverageMode::Histogram => {
-            for (&depth, &bases) in &depths.histogram {
+            for (&depth, &bases) in depths.histogram() {
                 record.write_column(
                     output,
                     format_args!(
@@ -346,7 +291,7 @@ fn report(
             }
         }
         CoverageMode::Depth => {
-            for run in &depths.runs {
+            for run in depths.runs() {
                 for position in run.start..run.end {
                     record.write_column(
                         output,

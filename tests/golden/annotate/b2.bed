@@ -1,0 +1,5 @@
+chr1	20	20	right-boundary-point	0	-
+chr1	10	10	left-boundary-point	0	-
+chr1	11	12	inside	0	-
+chr1	100	101	touch	0	-
+chr2	1	2	full	0	-

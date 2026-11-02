@@ -1,0 +1,7 @@
+#						first	second
+chr1	0	2000000	coarse-bin	0	+	0.000004	0.000001
+chr1	90	100	tie-before	0	+	0.500000	0.000000
+chr1	10	20	tie-after	0	-	0.100000	0.100000
+chr1	10	10	point-a	0	+	1.000000	0.000000
+chr1	200000	200001	later-bin	0	+	0.000000	0.000000
+chr2	1	2	chrom-first	0	+	0.000000	1.000000

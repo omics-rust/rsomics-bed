@@ -11,7 +11,8 @@ use rsomics_common::{
 
 use crate::io::open_input;
 use crate::{
-    closest, cluster, complement, coverage, intersect, merge, read_genome, sort, subtract, window,
+    annotate, closest, cluster, complement, coverage, intersect, merge, read_genome, sort,
+    subtract, window,
 };
 
 const META: ToolMeta = ToolMeta {
@@ -54,6 +55,54 @@ enum Command {
     Closest(ClosestArgs),
     /// Measure coverage of pooled B intervals over each A record
     Coverage(CoverageArgs),
+    /// Append independent overlap counts and fractions from annotation files
+    Annotate(AnnotateArgs),
+}
+
+#[derive(Debug, Args)]
+#[command(next_help_heading = "Input/output")]
+struct AnnotateArgs {
+    /// BED file to annotate; use - for standard input
+    #[arg(short = 'i', long, value_name = "BED")]
+    input: PathBuf,
+
+    /// Annotation BED files; standard input is not supported
+    #[arg(long, value_name = "BED", num_args = 1.., required = true)]
+    files: Vec<PathBuf>,
+
+    /// Output BED file; omit or use - for standard output
+    #[arg(short, long, value_name = "BED")]
+    output: Option<PathBuf>,
+
+    /// Report only the count from each annotation file
+    #[arg(long, conflicts_with = "both", help_heading = "Reporting")]
+    counts: bool,
+
+    /// Report count followed by fraction for each annotation file
+    #[arg(long, conflicts_with = "counts", help_heading = "Reporting")]
+    both: bool,
+
+    /// One generated-header label per annotation file
+    #[arg(long, value_name = "NAME", num_args = 1.., help_heading = "Reporting")]
+    names: Vec<String>,
+
+    /// Require matching valid BED6 strands
+    #[arg(
+        short = 's',
+        long,
+        conflicts_with = "opposite_strand",
+        help_heading = "Selection"
+    )]
+    same_strand: bool,
+
+    /// Require opposing valid BED6 strands
+    #[arg(
+        short = 'S',
+        long,
+        conflicts_with = "same_strand",
+        help_heading = "Selection"
+    )]
+    opposite_strand: bool,
 }
 
 #[derive(Debug, Args)]
@@ -432,6 +481,43 @@ pub(crate) fn run() -> process::ExitCode {
 fn execute(cli: Cli) -> Result<()> {
     let json = cli.output.json;
     match cli.command {
+        Command::Annotate(args) => {
+            require_named_json_output(json, args.output.as_deref())?;
+            for path in &args.files {
+                reject_stdin_b(path)?;
+            }
+            reject_output_alias(
+                args.output.as_deref(),
+                std::iter::once(Some(args.input.as_path()))
+                    .chain(args.files.iter().map(|path| Some(path.as_path()))),
+            )?;
+            let options = annotate::AnnotateOptions {
+                mode: if args.counts {
+                    annotate::AnnotateMode::Counts
+                } else if args.both {
+                    annotate::AnnotateMode::Both
+                } else {
+                    annotate::AnnotateMode::Fraction
+                },
+                strand: if args.same_strand {
+                    crate::StrandFilter::Same
+                } else if args.opposite_strand {
+                    crate::StrandFilter::Opposite
+                } else {
+                    crate::StrandFilter::Any
+                },
+                names: args.names,
+            };
+            let input = open_input(Some(&args.input))?;
+            let files = args
+                .files
+                .iter()
+                .map(|path| open_input(Some(path)))
+                .collect::<Result<Vec<_>>>()?;
+            write_output(args.output.as_deref(), |output| {
+                annotate::annotate(input, files, output, options)
+            })
+        }
         Command::Coverage(args) => {
             require_named_json_output(json, args.output.as_deref())?;
             for path in &args.b {
