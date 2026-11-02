@@ -1,6 +1,54 @@
 # Performance evidence
 
-## Unreleased annotation and mapping workflows
+## 0.4.0 candidate: full-genome coverage tracks
+
+Implementation c6e35f8650e812d7dbaaab1e8e2a9c1894e0c1b6 passes exact-head
+four-native CI41519713617, with126 tests per debug/release/packaged profile and
+15 installed calls across twelve operations. The0.4.0 versioned release gate
+is separate; immutable v0.3.0 assets and earlier measured binaries are unchanged.
+
+One representative campaign uses all584846 retained RefSeq exon records
+(28597646B, SHA2569fe2006b8aa58653b0f18141451473af71dc5c9ed3274ea90e0b3b627fd684bb)
+and the complete official93-contig hg19 genome (3137161264 bases;
+SHA256b404927655a4aada254ea94ad4da0c8901ed0737e67a0dcabedf673354b1f505).
+The host is shared dell-Precision-7920-Tower, Intel Xeon Gold6238R@2.20GHz,
+Ubuntu22.04.5, Linux6.8.0-130-generic x86_64. Commands use taskset CPUs0-3;
+those CPUs are not claimed idle or exclusive.
+
+Each whole operation runs one warmup/tool followed by five alternating measured
+pairs,24 calls total. Histogram uses the default genomecov report; zero-inclusive
+bedGraph uses native `--bedgraph-all` and upstream `-bga`. All calls include input
+parsing and complete stdout generation. All24 complete outputs are byte-equal
+to their operation's pinned-source baseline and remain retained remotely.
+GNU time's explicit `%e` at0.01-second resolution is the primary wall metric;
+controller monotonic wall is diagnostic only. Memory is GNU maximum-process
+RSS, KiB multiplied by1024, not aggregate-tree or whole-system memory.
+
+| Workflow | Native wall seconds | BEDTools wall seconds | Native/source medians | RSS bytes, native/source |
+|---|---|---|---|---|
+| Histogram |0.21,0.20,0.23,0.20,0.21|115.43,113.77,114.81,112.00,110.89|0.21/113.77|5505024/1998323712|
+| Zero-inclusive bedGraph |0.37,0.36,0.36,0.38,0.36|21.19,21.03,20.71,20.71,20.80|0.36/20.80|5505024/1998323712|
+
+Native wall and maximum-process-RSS populations are strictly below the source
+for these two workflows. Histogram output is29805B, SHA256
+b9d181d4b97b4bad8c14aceb4bc308b0c23a01df788a94f2a235fd7665c14bbe;
+bedGraph output is13290104B, SHA256
+a8d60cd6d4fd91c4f675a5958384520b37fb57a8b9228e99ce05a3dc15c08478.
+Measured native SHA25600b1f5805a441fa368209b265bbfc0c94914558d5a80e0bb1e41128ea5de6609.
+Measured BEDTools2.31.1 SHA256e7d4b84005efc6accef3b7867cfe47df2201bd33a68660928b270a1ed31e682a,
+built from exact revision705ccfdf2c9a77d71560c8adcece0663c2f5e18e with its
+actual source-build/static-ABI/provider provenance retained.
+
+[Control-plane receipt](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-genomecov-performance-2026-11-03.json)
+pins metrics, input/binary and output identities, and points to retained exact
+commands, original raw resources and independent full-byte comparison proof. Local
+small originals are `/Volumes/KIOXIA/Developments/tmp/bed-genomecov-linux-observe-20261103.yuUFmw`;
+complete output bodies remain under `/home/liangjy/rsomics-bed-genomecov-20261103`.
+These are single-host full-genome annotation workflows, not biological/read-depth,
+thread-scaling, cold-cache, physical-I/O, all-mode or universal speed claims.
+Later rebuilt delivery binaries do not inherit these exact binary measurements.
+
+## Annotation and mapping workflows
 
 These full RefSeq-derived annotation workloads are distinct from the
 eight-operation historical measurements below. Each retains complete output

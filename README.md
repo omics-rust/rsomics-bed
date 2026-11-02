@@ -14,6 +14,7 @@ rsomics-bed closest
 rsomics-bed coverage
 rsomics-bed annotate
 rsomics-bed map
+rsomics-bed genomecov
 ```
 
 Query input accepts a file or standard input; secondary annotation inputs
@@ -33,6 +34,12 @@ guarantees refer to the release tag rather than the current checkout.
 The older eight-command [v0.2.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.2.0)
 and its assets remain unchanged. New operations retain separate representative
 performance evidence described below.
+
+Current source prepares the twelve-command **0.4.0 release candidate**, adding
+`genomecov`. It is not included in v0.3.0 and has not been published. Its
+implementation has four-native correctness and representative full-genome
+performance evidence; the versioned candidate still requires exact-head native
+packaging, release review and publication.
 
 The four native Linux/macOS x86_64/aarch64 archives contain one `rsomics-bed`
 executable, documentation, original license/notice bodies, and `BUILD.json`,
@@ -97,6 +104,17 @@ I/O failures use the stable common exit codes 1, 2, and 4 respectively.
   A record. Its23 operations include numeric summaries, counts and text lists.
   Columns and operations broadcast when either list has one item. Empty B is
   rejected; selected invalid/non-finite numeric values are errors.
+- `genomecov` reports genome-wide depth histograms, nonzero or zero-inclusive
+  bedGraph runs, or per-base depth against a required genome file. It supports
+  BED6 strand/endpoint selection, exact-width BED12 blocks, depth scaling and
+  histogram depth bins, using sparse events rather than chromosome-sized arrays.
+
+`genomecov` requires chromosome-grouped BED, but starts within a group need not
+be sorted. Selected chromosome groups retain encounter order; untouched
+chromosomes follow genome-file order. Under `--split`, BED12+ retains its outer
+span rather than using BED12 blocks. Selected origin points and spans outside
+the declared genome fail explicitly. `--max` retains BEDTools' uncapped final
+bedGraph-run behavior. BAM input and paired-read fragment modes are excluded.
 
 `coverage` and `map` currently reject split-block selection combined with an
 explicit fraction, reciprocal or either-fraction flag. Ordinary split-block
@@ -176,6 +194,13 @@ RSS56.9/175.0MB. Sorted map has median wall0.577/0.470s and RSS4.31/4.98MB:
 it is about23percent slower but uses13.5percent less peak process memory.
 Map qualifies a resource-use advantage, not a throughput advantage. See
 [PERFORMANCE.md](PERFORMANCE.md) for source and executable bindings and limits.
+
+The full-genome `genomecov` campaign on shared Linux Xeon Gold 6238R uses all
+584,846 exon records and the complete 93-contig hg19 genome. Histogram median
+native/source wall is 0.21/113.77s; zero-inclusive bedGraph is 0.36/20.80s.
+Measured maximum-process RSS is 5.51/1,998.32MB in both modes. These are scoped
+full-workflow results bound to the c6e35 implementation and measured Linux
+executables, not measurements of a future release binary or other modes.
 
 ## Origin
 

@@ -1,6 +1,11 @@
 # Historical implementation migration
 
-## Genome coverage tracks, unreleased
+## 0.4.0 candidate: genome coverage tracks
+
+The twelve-operation candidate adds `genomecov` to the eleven operations in
+immutable GitHub v0.3.0 at bc40084ccc2d3837384da1377d4d57f0600fcb75.
+The older v0.2.0 and v0.3.0 tags/assets are not replaced. `unionbedg`, BAM
+coverage and paired-read fragment modes are not part of this release candidate.
 
 `rsomics-bed-genomecov@0087cf10fc15` is retained as fixture and algorithmic
 reference only (classification3). The product operation uses the existing
@@ -15,9 +20,13 @@ treated as an outer span here; other product operations keep their existing
 block contracts. The final bedGraph run retains the upstream uncapped-max
 quirk. Selected zero-origin points, unknown contigs, spans beyond declared
 bounds and missing endpoint strands fail explicitly rather than inheriting
-unsafe indexing or implicit strand assumptions. Initial v0.3.0 delivery and
-its historical performance identities remain unchanged; new performance,
-native qualification and publication are separate gates.
+unsafe indexing or implicit strand assumptions. Implementation c6e35 passes
+four-native correctness:126 tests per debug/release/packaged profile and a
+15-call installed lifecycle across twelve operations. Its accepted full-genome
+histogram/zero-inclusive-bedGraph workflow retains exact output and measured
+Linux executable identities in PERFORMANCE.md. Versioned0.4.0 exact-head native
+qualification and publication remain separate gates. The registry hold is
+unchanged and no registry retry is implied.
 
 ## 0.2 GitHub delivery
 
