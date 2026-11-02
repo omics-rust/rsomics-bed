@@ -14,6 +14,7 @@ mod depth;
 pub mod intersect;
 mod interval_index;
 mod io;
+pub mod map;
 pub mod merge;
 mod overlap_index;
 mod relation_index;

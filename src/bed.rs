@@ -37,6 +37,19 @@ impl BedRecord {
         self.raw.split(|&byte| byte == b'\t').count()
     }
 
+    pub(crate) fn column(&self, index: usize, label: &str) -> Result<&[u8]> {
+        self.raw
+            .split(|&byte| byte == b'\t')
+            .nth(index)
+            .ok_or_else(|| {
+                invalid(format!(
+                    "{label} BED line {}: missing column {}",
+                    self.line_number,
+                    index + 1
+                ))
+            })
+    }
+
     pub(crate) fn name(&self, label: &str) -> Result<&[u8]> {
         self.field(3, label, "name")
     }
@@ -104,13 +117,18 @@ impl BedRecord {
         start: u64,
         end: u64,
     ) -> Result<()> {
+        self.write_prefix(output, start, end)?;
+        output.write_all(b"\n").rs_context("writing BED record")
+    }
+
+    pub(crate) fn write_prefix(&self, output: &mut dyn Write, start: u64, end: u64) -> Result<()> {
         write!(output, "{}\t{start}\t{end}", self.chrom()).rs_context("writing BED record")?;
         if let Some(index) = self.suffix_start {
             output
                 .write_all(&self.raw[index..])
                 .rs_context("writing BED record")?;
         }
-        output.write_all(b"\n").rs_context("writing BED record")
+        Ok(())
     }
 
     pub(crate) fn write_joined_raw(&self, output: &mut dyn Write, other: &[u8]) -> Result<()> {
@@ -178,6 +196,9 @@ pub(crate) struct BedReader<R: BufRead> {
     input: R,
     line: Vec<u8>,
     line_number: usize,
+    capture_header: bool,
+    before_record: bool,
+    header: Vec<u8>,
 }
 
 pub(crate) struct BedSliceReader<'a> {
@@ -222,6 +243,9 @@ impl<R: Read> BedReader<BufReader<R>> {
             input: BufReader::new(input),
             line: Vec::with_capacity(256),
             line_number: 0,
+            capture_header: false,
+            before_record: true,
+            header: Vec::new(),
         }
     }
 }
@@ -294,6 +318,14 @@ impl BedSliceRecord<'_> {
 }
 
 impl<R: BufRead> BedReader<R> {
+    pub(crate) fn preserve_header(mut self) -> Self {
+        self.capture_header = true;
+        self
+    }
+
+    pub(crate) fn header(&self) -> &[u8] {
+        &self.header
+    }
     pub(crate) fn next_record(&mut self) -> Result<Option<BedRecord>> {
         Ok(self.next_parsed()?.map(|record| {
             let interval = Interval::new(
@@ -333,8 +365,13 @@ impl<R: BufRead> BedReader<R> {
                 self.line.pop();
             }
             if is_skippable(&self.line) {
+                if self.capture_header && self.before_record && !self.line.is_empty() {
+                    self.header.extend_from_slice(&self.line);
+                    self.header.push(b'\n');
+                }
                 continue;
             }
+            self.before_record = false;
             return parse_record(&self.line, self.line_number).map(Some);
         }
     }

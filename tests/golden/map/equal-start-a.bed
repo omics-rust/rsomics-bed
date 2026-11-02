@@ -1,0 +1,7 @@
+chr1	0	100	broad	0	+
+chr1	10	10	point-before	0	+
+chr1	10	20	equal-start-wide	0	+
+chr1	10	15	equal-start-nested	0	+
+chr1	10	10	point-after	0	+
+chr1	30	30	point-later	0	+
+chr1	200	210	nohit	0	+

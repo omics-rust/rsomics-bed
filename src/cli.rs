@@ -1,5 +1,7 @@
 //! Command-line parsing and dispatch for the product binary.
 
+mod map;
+
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -57,6 +59,8 @@ enum Command {
     Coverage(CoverageArgs),
     /// Append independent overlap counts and fractions from annotation files
     Annotate(AnnotateArgs),
+    /// Append reductions of overlapping B columns to sorted A records
+    Map(map::Args),
 }
 
 #[derive(Debug, Args)]
@@ -481,6 +485,7 @@ pub(crate) fn run() -> process::ExitCode {
 fn execute(cli: Cli) -> Result<()> {
     let json = cli.output.json;
     match cli.command {
+        Command::Map(args) => map::execute(args, json),
         Command::Annotate(args) => {
             require_named_json_output(json, args.output.as_deref())?;
             for path in &args.files {

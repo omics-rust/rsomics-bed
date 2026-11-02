@@ -1,0 +1,5 @@
+chr1	0	100	broad	0	+
+chr1	10	20	inner	0	-
+chr1	30	30	point	0	+
+chr1	200	210	nohit	0	+
+chr2	0	5	other	0	+

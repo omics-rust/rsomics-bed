@@ -1,0 +1,5 @@
+# leading comment
+track name=map_header
+chr1	000	010	A1	0	+
+# commented-out record
+chr1	020	030	A2	0	+

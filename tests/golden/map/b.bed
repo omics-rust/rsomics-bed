@@ -1,0 +1,9 @@
+chr1	0	100	zeta	2	+
+chr1	0	5	alpha	-3	-
+chr1	0	100	beta	2	+
+chr1	10	20	gamma	1.234567890123	-
+chr1	10	15	delta	1.234567890123	+
+chr1	20	20	point1	4	+
+chr1	30	30	point2	4	+
+chr1	50	60	omega	0	-
+chr2	1	4	chr2	7	+

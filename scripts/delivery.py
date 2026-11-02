@@ -1,4 +1,4 @@
-"""Verify source packaging and the installed ten-operation BED candidate."""
+"""Verify source packaging and the installed eleven-operation BED candidate."""
 
 import argparse
 import hashlib
@@ -12,7 +12,7 @@ import tarfile
 
 PRODUCT = 'rsomics-bed'
 ROOT = Path(__file__).resolve().parents[1]
-OPERATIONS = ['sort', 'merge', 'intersect', 'subtract', 'complement', 'cluster', 'window', 'closest', 'coverage', 'annotate']
+OPERATIONS = ['sort', 'merge', 'intersect', 'subtract', 'complement', 'cluster', 'window', 'closest', 'coverage', 'annotate', 'map']
 HOSTS = {'linux-x86_64': 'x86_64-unknown-linux-gnu', 'linux-aarch64': 'aarch64-unknown-linux-gnu',
          'macos-x86_64': 'x86_64-apple-darwin', 'macos-aarch64': 'aarch64-apple-darwin'}
 
@@ -208,6 +208,16 @@ def smoke(binary):
             result['result'] is None and
             annotated.read_bytes() == b'#\t\t\t\t\t\tfirst_cnt\tfirst_pct\tsecond_cnt\tsecond_pct\nchr1\t0\t10\tA\t0\t+\t1\t0.500000\t2\t0.500000\n',
             'installed stdin/multi-file/names annotate JSON or complete output differs')
+    mapped = directory / 'mapped.bed'
+    out, err = run(['--json', 'map', '-a', '-', '-b', fixture / 'map/b.bed',
+                    '-c', '4,5', '--operations', 'distinct,mean', '--delimiter', '|',
+                    '--null', 'NA', '--precision', '4', '--output', mapped],
+                   stdin=fixture / 'map/a.bed')
+    result = json.loads(out.read_bytes())
+    require(err.stat().st_size == 0 and result['tool'] == PRODUCT and result['status'] == 'ok' and
+            result['schema_version'] == '1.0' and result['tool_version'] == os.environ['PACKAGE_VERSION'] and
+            result['result'] is None and mapped.read_bytes() == (fixture / 'map/custom-controls.stdout').read_bytes(),
+            'installed stdin/multireducer map JSON or complete output differs')
     protected = directory / 'protected.bed'
     protected.write_bytes(b'previous result\n')
     out, err = run(['--json', 'intersect', '-a', fixture / 'intersect.malformed-a.bed',
@@ -217,14 +227,15 @@ def smoke(binary):
             diagnostic['error']['kind'] == 'InvalidInput' and diagnostic['exit_code'] == 1 and
             'greater than end' in err.read_text() and protected.read_bytes() == b'previous result\n',
             'installed malformed-input failure lost input-error diagnostics or output atomicity')
-    require(len(records) == 13, 'installed lifecycle call count differs')
+    require(len(records) == 14, 'installed lifecycle call count differs')
     save(directory / 'VERIFIED.json', dict(installed_binary=identity(binary), calls=records,
          stable_operations=OPERATIONS, stdin_sort=True, sort_output_reloaded_by_merge=True,
          coverage_stdin_pooled_json_byte_exact=True, release_acceptance=False,
          annotate_stdin_files_names_both_byte_exact=True,
+         map_stdin_multireducer_json_byte_exact=True,
          common_json_named_output=True, golden_outputs_byte_exact=True, failure_preserves_prior_output=True,
          files={p.name: identity(p) for p in directory.iterdir() if p.is_file()},
-         scope='installed ten-operation candidate lifecycle; not upstream, performance or public release acceptance'))
+         scope='installed eleven-operation candidate lifecycle; not upstream, performance or public release acceptance'))
 
 
 def bundle(binary):

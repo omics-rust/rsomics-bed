@@ -1,0 +1,7 @@
+chr1	0	100	broad	0	+	long,left-boundary,right,nested,point,point-later	6	41
+chr1	10	10	point-before	0	+	long,left-boundary,right,nested	4	17
+chr1	10	20	equal-start-wide	0	+	long,right,nested,point	4	25
+chr1	10	15	equal-start-nested	0	+	long,right,nested	3	14
+chr1	10	10	point-after	0	+	long,right,nested	3	14
+chr1	30	30	point-later	0	+	long,point-later	2	15
+chr1	200	210	nohit	0	+	.	0	.

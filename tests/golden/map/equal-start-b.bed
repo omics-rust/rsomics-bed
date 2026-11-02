@@ -1,0 +1,6 @@
+chr1	0	100	long	2	+
+chr1	0	10	left-boundary	3	+
+chr1	10	20	right	5	+
+chr1	10	15	nested	7	+
+chr1	20	20	point	11	+
+chr1	30	30	point-later	13	+

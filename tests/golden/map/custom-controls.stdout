@@ -1,0 +1,5 @@
+chr1	0	100	broad	0	+	alpha|beta|delta|gamma|omega|point1|point2|zeta	1.434
+chr1	10	20	inner	0	-	beta|delta|gamma|point1|zeta	2.094
+chr1	30	30	point	0	+	beta|point2|zeta	2.667
+chr1	200	210	nohit	0	+	NA	NA
+chr2	0	5	other	0	+	chr2	7
