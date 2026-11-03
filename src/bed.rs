@@ -33,6 +33,16 @@ impl BedRecord {
         self.interval.end()
     }
 
+    pub(crate) fn signed_bounds(&self) -> (i128, i128) {
+        let start = i128::from(self.start());
+        let end = i128::from(self.end());
+        if start == end {
+            (start - 1, end + 1)
+        } else {
+            (start, end)
+        }
+    }
+
     pub(crate) fn field_count(&self) -> usize {
         self.raw.split(|&byte| byte == b'\t').count()
     }

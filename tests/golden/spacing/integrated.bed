@@ -1,0 +1,18 @@
+# spacing source witness
+track name=spacing
+browser position chrB:1-100
+chrB	0	0	origin	0	+	opaque-origin
+chrB	0	4	same-start	0	-	opaque-tie
+chrB	4	8	adjacent	0	+	x
+chrB	7	10	overlap	0	-	y
+chrB	12	14	gap	0	.	z
+chrB	20	20	point	0	+	p
+chrB	20	20	duplicate-point	0	-	p2
+chrB	20	21	point-tie	0	.	p3
+chrB	30	1000	long	0	+	l
+chrB	40	50	nested	0	-	n
+chrB	60	70	previous-only	0	.	q
+chrA	5	10	new-chrom	0	-	a
+chrA	10	15	adjacent	0	+	b
+chrHuge	0	4000000000	huge-a	0	+	h1
+chrHuge	3999999998	8000000000	huge-b	0	-	h2

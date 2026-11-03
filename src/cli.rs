@@ -3,6 +3,7 @@
 mod coordinate;
 mod genomecov;
 mod map;
+mod spacing;
 
 use std::path::{Path, PathBuf};
 use std::process;
@@ -69,6 +70,8 @@ enum Command {
     Slop(coordinate::SlopArgs),
     /// Shift intervals within chromosome bounds
     Shift(coordinate::ShiftArgs),
+    /// Append spacing from the preceding sorted BED record
+    Spacing(spacing::Args),
 }
 
 #[derive(Debug, Args)]
@@ -497,6 +500,7 @@ fn execute(cli: Cli) -> Result<()> {
         Command::Genomecov(args) => genomecov::execute(args, json),
         Command::Slop(args) => coordinate::execute_slop(args, json),
         Command::Shift(args) => coordinate::execute_shift(args, json),
+        Command::Spacing(args) => spacing::execute(args, json),
         Command::Annotate(args) => {
             require_named_json_output(json, args.output.as_deref())?;
             for path in &args.files {

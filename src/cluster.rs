@@ -1,11 +1,11 @@
 //! Streaming BED clustering with BEDTools-compatible distance and strand order.
 
-use std::collections::HashSet;
 use std::io::{BufWriter, Read, Write};
 
 use rsomics_common::{Context, Result};
 
 use crate::bed::{BedReader, BedRecord, Strand, invalid};
+use crate::order::InputOrder;
 
 /// Options for [`cluster`].
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -41,7 +41,7 @@ fn cluster_stream(
     output: &mut dyn Write,
     distance: u64,
 ) -> Result<()> {
-    let mut order = InputOrder::default();
+    let mut order = InputOrder::new("cluster", None);
     let mut active: Option<ActiveCluster> = None;
     let mut cluster_id = 0_u64;
 
@@ -70,7 +70,7 @@ fn cluster_by_strand(
     output: &mut dyn Write,
     distance: u64,
 ) -> Result<()> {
-    let mut order = InputOrder::default();
+    let mut order = InputOrder::new("cluster", None);
     let mut records = Vec::new();
     let mut cluster_id = 0_u64;
 
@@ -153,49 +153,6 @@ fn checked_reach(record: &BedRecord, end: u64, distance: u64) -> Result<u64> {
             record.end()
         ))
     })
-}
-
-#[derive(Default)]
-struct InputOrder {
-    chromosome: Option<String>,
-    last_start: u64,
-    closed: HashSet<String>,
-}
-
-impl InputOrder {
-    fn accept(&mut self, record: &BedRecord) -> Result<bool> {
-        match self.chromosome.as_deref() {
-            Some(chromosome) if chromosome == record.chrom() => {
-                if record.start() < self.last_start {
-                    return Err(invalid(format!(
-                        "cluster input is not sorted: {}:{} follows start {}",
-                        record.chrom(),
-                        record.start(),
-                        self.last_start
-                    )));
-                }
-                self.last_start = record.start();
-                Ok(false)
-            }
-            Some(chromosome) => {
-                self.closed.insert(chromosome.to_owned());
-                if self.closed.contains(record.chrom()) {
-                    return Err(invalid(format!(
-                        "cluster input chromosome {:?} reappears",
-                        record.chrom()
-                    )));
-                }
-                self.chromosome = Some(record.chrom().to_owned());
-                self.last_start = record.start();
-                Ok(true)
-            }
-            None => {
-                self.chromosome = Some(record.chrom().to_owned());
-                self.last_start = record.start();
-                Ok(true)
-            }
-        }
-    }
 }
 
 #[cfg(test)]

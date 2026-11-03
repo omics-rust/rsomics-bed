@@ -162,13 +162,8 @@ fn stream(
 }
 
 fn bounds(record: &BedRecord) -> (i128, i128, bool) {
-    let start = i128::from(record.start());
-    let end = i128::from(record.end());
-    if start == end {
-        (start - 1, end + 1, true)
-    } else {
-        (start, end, false)
-    }
+    let (start, end) = record.signed_bounds();
+    (start, end, record.start() == record.end())
 }
 
 fn reverse(record: &BedRecord) -> bool {

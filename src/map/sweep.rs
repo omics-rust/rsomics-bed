@@ -9,19 +9,9 @@ use crate::{Genome, StrandFilter};
 
 type Bounds = (i128, i128);
 
-fn bounds(record: &BedRecord) -> Bounds {
-    let start = i128::from(record.start());
-    let end = i128::from(record.end());
-    if start == end {
-        (start - 1, end + 1)
-    } else {
-        (start, end)
-    }
-}
-
 fn blocks(record: &BedRecord, label: &str) -> Result<Vec<Bounds>> {
     if record.field_count() < 12 {
-        return Ok(vec![bounds(record)]);
+        return Ok(vec![record.signed_bounds()]);
     }
     Ok(record
         .blocks(label)?
@@ -219,7 +209,7 @@ impl<'a, R: Read> Sweep<'a, R> {
             Vec::new()
         };
         let entry = Entry {
-            bounds: bounds(&record),
+            bounds: record.signed_bounds(),
             record,
             strand,
             blocks,
@@ -238,7 +228,7 @@ impl<'a, R: Read> Sweep<'a, R> {
         // A later equal-start point can still overlap B ending at this raw start.
         self.cache
             .retain(|entry| entry.bounds.1 >= i128::from(query.start()));
-        let query_bounds = bounds(query);
+        let query_bounds = query.signed_bounds();
         let strand = if self.options.strand == StrandFilter::Any {
             None
         } else {

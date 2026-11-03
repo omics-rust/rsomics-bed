@@ -19,9 +19,11 @@ mod io;
 pub mod map;
 pub mod merge;
 mod numeric;
+mod order;
 mod overlap_index;
 mod relation_index;
 pub mod sort;
+pub mod spacing;
 pub mod subtract;
 pub mod window;
 
