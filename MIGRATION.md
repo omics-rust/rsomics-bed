@@ -1,8 +1,8 @@
 # Historical implementation migration
 
-## 0.6.0 source candidate: previous-record spacing
+## 0.6.0 GitHub delivery: previous-record spacing
 
-The candidate adds `spacing` as the fifteenth command; published v0.5.0 and its
+The release adds `spacing` as the fifteenth command; published v0.5.0 and its
 fourteen-command archives remain immutable. Historical
 `rsomics-bed-spacing@fb4ede5c9a18bfdffcaafd1e45e369d7b6402e95` is retained as
 fixture/reference only (classification 3), not merged production code.
@@ -18,9 +18,19 @@ map, coordinate and spacing; cluster and spacing share the raw-order validator,
 with optional genome ranking for spacing only. No Layer A API or dependency is
 added, and other operations retain their order policies.
 
-Local formatting, strict Clippy, complete debug/release suites (128 executions
-each) and one clean whole-feature review pass. Native-four correctness,
-representative spacing performance and publication are not yet qualified.
+Local formatting, strict Clippy and one clean whole-feature review pass.
+[GitHub v0.6.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.6.0),
+release432289022, was published at2026-11-03T04:53:07Z from
+`35d656f00f0db19877b16aec23453db14520b8aa`. Exact-head
+[CI41577594195](https://github.com/omics-rust/rsomics-bed/actions/runs/41577594195)
+passes all four native targets:128 tests per debug/release/packaged profile,
+18 installed calls/fifteen operations per host. Fresh anonymous public Mac ARM
+installation passes17 successes and one expected error preserving prior output;
+the public source crate matches287 Git bodies/modes and289 members without
+compilation. The
+[public receipt](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-public-delivery-2026-11-03-v06.json)
+binds actual delivery. PERFORMANCE.md records final-CI spacing throughput,
+higher RSS and slower native warmup separately.
 Older measurements retain their original source/binary bindings and losses.
 Flank, makewindows and reldist remain unimplemented with separate policy holds;
 registry authorization remains held without retry.

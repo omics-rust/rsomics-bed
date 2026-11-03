@@ -27,11 +27,18 @@ to standard output unless `--output` is supplied. Run `rsomics-bed --help` or
 
 ## Installation and delivery status
 
-The 0.6.0 source candidate adds `spacing`, for fifteen commands. It is not a
-published release; native-four CI, representative spacing performance and public
-delivery remain pending. The published 0.5.0 product below has fourteen commands.
+The fifteen-command product is available as [GitHub v0.6.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.6.0),
+adding `spacing`. Release432289022 was published at2026-11-03T04:53:07Z from
+`35d656f00f0db19877b16aec23453db14520b8aa`. Exact-head
+[CI41577594195](https://github.com/omics-rust/rsomics-bed/actions/runs/41577594195)
+passed native Linux/macOS x86_64/aarch64:128 tests per debug/release/packaged
+profile and18 installed calls across fifteen operations per host. Fresh anonymous
+public Mac ARM installation passed the same lifecycle; its source crate matched
+287 Git bodies/modes and289 members without compilation. The
+[0.6.0 public receipt](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-public-delivery-2026-11-03-v06.json)
+binds actual assets and the installed binary.
 
-The fourteen-command product is available as [GitHub v0.5.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.5.0),
+The earlier fourteen-command product is available as [GitHub v0.5.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.5.0),
 adding `slop` and `shift`. Release 432257319 was published at
 2026-11-03T03:50:43Z from `91f2bf9498341b1d1fd4cf27fd244c2820f73ad4`.
 Exact-head [CI 41573159869](https://github.com/omics-rust/rsomics-bed/actions/runs/41573159869)

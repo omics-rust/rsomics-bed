@@ -1,13 +1,46 @@
 # Performance evidence
 
-## 0.6.0 candidate: spacing qualification pending
+## 0.6.0: full-input spacing
 
-No new spacing performance measurement is included here. The fifteen-command
-source candidate has local formatting, strict Clippy and 128 passing executions
-in each debug/release profile; native-four and representative wall/RSS evidence
-remain pending. The current
-[spacing control-plane contract](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/state/bed-spacing-contract-2026-11-03.md)
-tracks qualification; an accepted performance receipt is not yet available.
+[GitHub v0.6.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.6.0),
+release432289022, was published at2026-11-03T04:53:07Z from
+`35d656f00f0db19877b16aec23453db14520b8aa`. Exact-head
+[CI41577594195](https://github.com/omics-rust/rsomics-bed/actions/runs/41577594195)
+passes128 tests per debug/release/packaged profile and18 installed calls across
+fifteen operations on all four native targets. Fresh anonymous public Mac ARM
+installation passes that lifecycle; its source crate matches287 Git bodies/modes
+and289 members without compilation. The
+[public receipt](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-public-delivery-2026-11-03-v06.json)
+binds actual delivery.
+
+Spacing measures the actual final-head Mac ARM CI artifact:1,950,112 bytes,
+SHA256 `117b67d009ec91f748fbe781a182ee95afcf3931801b355b80f5a8c40bb1ce2d`.
+The shared nonexclusive host is Apple M2/arm64, macOS27.2,8GiB RAM.
+BEDTools2.31.1 executable SHA256 is
+`fc994e1fcfdce8ce8591630d71f21fe67e2275c2a8d967dc0e3dfb4cfa4677a3`.
+The unchanged full584,846-row RefSeq BED is28,597,646 bytes,47 contigs/no points,
+SHA256 `9fe2006b8aa58653b0f18141451473af71dc5c9ed3274ea90e0b3b627fd684bb`.
+Native `spacing --input INPUT` and source `spacing -i INPUT` use no genome flag.
+One warmup/tool and five alternating measured pairs total12 calls; all complete
+outputs match at584,846 rows/30,777,224 bytes, SHA256
+`84fb1fc03b4dc02d97d330699d7a08dc176869bb46907d6094413823277c78f4`.
+
+Source wall seconds are0.37,0.36,0.36,0.35,0.36; native0.16,0.16,0.16,0.17,0.16.
+Medians0.36/0.16s give2.25x; every measured native pair is faster. Source RSS
+bytes are2932736,2949120,2949120,2949120,2932736; native
+3260416,3309568,3309568,3309568,3309568. Median RSS2,949,120/3,309,568 bytes
+is higher for native by360,448 bytes: throughput advantage, not memory advantage.
+Excluded warmup source/native wall is0.39/1.18s (native slower), with
+RSS2,981,888/3,309,568 bytes; the cause is not established.
+
+BSD time wall resolution is0.01s; RSS is maximum-process, not aggregate-tree.
+Warm cache is possible. These are not cold-cache, causal, thread-scaling,
+universal speed or point-boundary claims. The
+[spacing performance receipt](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-spacing-performance-2026-11-03.json)
+retains exact argv, raw resources, complete comparisons and before/after pins.
+Local originals are
+`/Volumes/KIOXIA/Developments/tmp/bed-spacing-performance-final-20261103.ZvNSGcrM`;
+COMPLETE SHA256 `65acdaf56169248c5fdba6b15e3dc16f5141a80d6801542959fe37942b152815`.
 Private signed-bound reuse in map/coordinate/spacing and order reuse in
 cluster/spacing do not reassign older measured executable identities below.
 
