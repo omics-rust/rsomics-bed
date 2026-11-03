@@ -26,17 +26,16 @@ to standard output unless `--output` is supplied. Run `rsomics-bed --help` or
 
 ## Installation and delivery status
 
-The 0.5.0 source candidate adds `slop` and `shift`, for fourteen operations.
-It is not yet a published 0.5.0 release. Implementation head
-`161961c688a5c2ecedfe28e3dc152abd8a56a011` passed native Linux/macOS
-x86_64/aarch64 CI 41569005243: 127 tests per debug/release/packaged profile
-and 17 installed calls across fourteen operations per host. That CI package
-still reported 0.4.0; it is neither the formal v0.4.0 assets nor final-head
-0.5.0 delivery evidence. Final metadata-head CI and public installation remain
-release gates. `flank` is not implemented; its point-output policy is unresolved.
+The fourteen-command product is available as [GitHub v0.5.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.5.0),
+adding `slop` and `shift`. Release 432257319 was published at
+2026-11-03T03:50:43Z from `91f2bf9498341b1d1fd4cf27fd244c2820f73ad4`.
+Exact-head [CI 41573159869](https://github.com/omics-rust/rsomics-bed/actions/runs/41573159869)
+passed native Linux/macOS x86_64/aarch64: 127 tests per debug/release/packaged
+profile and 17 installed calls across fourteen operations per host.
+`flank` is not implemented; its point-output policy is unresolved.
 
-The twelve-command product is available as [GitHub v0.4.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.4.0),
-adding `genomecov`. Release 432026368 was published at 2026-11-02T22:18:19Z from
+The earlier twelve-command [GitHub v0.4.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.4.0)
+release added `genomecov`. Release 432026368 was published at 2026-11-02T22:18:19Z from
 `5e5b709d00c07977ce81deb0f7f0f70fece91c4a`.
 The registry sparse index still lists only the earlier five-command 0.1.0;
 registry authorization remains held and has not been retried.
@@ -47,11 +46,11 @@ release tag rather than the current checkout.
 
 The four native Linux/macOS x86_64/aarch64 archives contain one `rsomics-bed`
 executable, documentation, original license/notice bodies, and `BUILD.json`,
-with a `SHA256SUMS` companion. Exact-head CI 41532198240 passed 126 tests per
-debug/release/packaged profile and the 15-call, twelve-operation installed
-lifecycle on all four native targets. A fresh anonymous public Mac ARM download
-passed the same lifecycle; its source crate matched all 266 Git bodies and modes
-without another source compilation.
+with a `SHA256SUMS` companion. A fresh anonymous public 0.5.0 Mac ARM download
+passed the 17-call, fourteen-operation lifecycle; its source crate matched all
+276 Git bodies and modes without another source compilation. The
+[public-delivery receipt](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-public-delivery-2026-11-03-v05.json)
+binds the actual release, assets and installed binary.
 BUILD records actual native host/toolchain, source head, lock, binary and
 package identities; it is not a signing, minimum-OS, or cross-build guarantee.
 

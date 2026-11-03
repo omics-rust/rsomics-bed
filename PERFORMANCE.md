@@ -1,6 +1,6 @@
 # Performance evidence
 
-## 0.5.0 candidate: full-input slop and shift
+## 0.5.0: full-input slop and shift
 
 Measured head `161961c688a5c2ecedfe28e3dc152abd8a56a011` passes native-four
 CI 41569005243 (127 tests per debug/release/packaged profile, fourteen installed
@@ -9,6 +9,17 @@ SHA-256 `7f77660e24edaeeb1c2d9cf1cda05bb9966a889f474f8982bd4687422cec5c3a`.
 Its package metadata still says 0.4.0; it is not a formal v0.4.0 release asset.
 The 0.5.0 metadata update changes no source hot path, but a rebuilt delivery
 binary has not itself been timed.
+
+[GitHub v0.5.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.5.0)
+(release 432257319) was published at 2026-11-03T03:50:43Z from
+`91f2bf9498341b1d1fd4cf27fd244c2820f73ad4`. Exact-head
+[CI 41573159869](https://github.com/omics-rust/rsomics-bed/actions/runs/41573159869)
+passes all four native targets with 127 tests per debug/release/packaged profile
+and 17 installed calls across fourteen operations. Fresh anonymous public
+Mac ARM installation passes that lifecycle; its source crate matches 276 Git
+bodies/modes without compilation. The
+[public-delivery receipt](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-public-delivery-2026-11-03-v05.json)
+binds those delivery binaries separately from the measured 161961c artifact.
 
 The shared nonexclusive host is Apple M2, arm64, macOS 27.2, 8 GiB RAM.
 BEDTools 2.31.1 executable SHA-256 is

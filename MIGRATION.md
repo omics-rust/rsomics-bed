@@ -1,6 +1,6 @@
 # Historical implementation migration
 
-## 0.5.0 source candidate: bounded coordinate transforms
+## 0.5.0 GitHub delivery: bounded coordinate transforms
 
 Fourteen commands add `slop` and `shift` to the immutable twelve-command
 v0.4.0 release. `flank` remains unimplemented pending its point-output policy;
@@ -32,10 +32,21 @@ calls across fourteen operations per host. Root adoption checks 748 packet
 pins, all 276 Git bodies/modes and 278 source-crate members. This package still
 reports 0.4.0 and is not a formal release. The measured Mac ARM CI artifact's
 slop/shift throughput advantage and higher RSS are bound in PERFORMANCE.md.
-The 0.5.0 metadata change leaves these hot paths unchanged; final-head CI,
-publication and fresh public installation are not asserted here. Registry
-authorization remains held without retry. Earlier tags, assets and performance
-records remain unchanged.
+The 0.5.0 metadata change leaves these hot paths unchanged.
+
+[GitHub v0.5.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.5.0),
+release 432257319, was published at 2026-11-03T03:50:43Z from
+`91f2bf9498341b1d1fd4cf27fd244c2820f73ad4`. Exact-head
+[CI 41573159869](https://github.com/omics-rust/rsomics-bed/actions/runs/41573159869)
+passes all four native targets with 127 tests per debug/release/packaged profile
+and 17 installed calls across fourteen operations per host. Fresh anonymous
+public Mac ARM installation passes the same lifecycle (16 successes and one
+expected error preserving prior output); the public source crate matches all
+276 Git bodies/modes, without compilation. The
+[public-delivery receipt](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-public-delivery-2026-11-03-v05.json)
+records the independently adopted public originals. Registry authorization
+remains held without retry. Earlier tags, assets and performance records remain
+unchanged; later documentation does not replace packaged documentation or assets.
 
 ## 0.4.0 GitHub delivery: genome coverage tracks
 
