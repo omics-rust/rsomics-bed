@@ -17,6 +17,7 @@ rsomics-bed map
 rsomics-bed genomecov
 rsomics-bed slop
 rsomics-bed shift
+rsomics-bed spacing
 ```
 
 Query input accepts a file or standard input; secondary annotation inputs
@@ -25,6 +26,10 @@ to standard output unless `--output` is supplied. Run `rsomics-bed --help` or
 `rsomics-bed <subcommand> --help` for the complete command tree.
 
 ## Installation and delivery status
+
+The 0.6.0 source candidate adds `spacing`, for fifteen commands. It is not a
+published release; native-four CI, representative spacing performance and public
+delivery remain pending. The published 0.5.0 product below has fourteen commands.
 
 The fourteen-command product is available as [GitHub v0.5.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.5.0),
 adding `slop` and `shift`. Release 432257319 was published at
@@ -118,8 +123,20 @@ I/O failures use the stable common exit codes 1, 2, and 4 respectively.
   negative strands, while missing or other strand values use forward behavior.
 - `shift` moves intervals with `--shift` or paired `--plus`/`--minus`;
   negative strands use minus, while missing or other strand values use plus.
+- `spacing` appends distance to the immediately previous record, not maximum
+  prior reach. First records per chromosome receive `.`, qualifying overlaps
+  `-1`, and other records the signed gap. Points use signed widened spans;
+  overlap requires at least `1e-9` of both spans in binary32 arithmetic.
 
-Both coordinate commands require `--input` (`-i`) and `--genome` (`-g`), accept
+`spacing` requires chromosome-grouped, nondecreasing raw starts (ties allowed),
+without chromosome revisits. Chromosomes follow encounter order unless
+`--genome` supplies known-chromosome ordering; genome sizes do not clip input.
+`--input` defaults to stdin; `--output`, `--header` (including header-only
+streams), JSON/named output and alias rejection use the shared product IO.
+Coordinates are canonicalized and trailing fields retained. Malformed/order/
+unknown-genome-chromosome errors are typed input errors; IO errors propagate.
+
+`slop` and `shift` require `--input` (`-i`) and `--genome` (`-g`), accept
 signed finite amounts, clip transformed coordinates to chromosome bounds, and
 preserve record order, duplicates and trailing fields. `--fraction` interprets
 amounts relative to feature length; `--header` preserves initial headers.

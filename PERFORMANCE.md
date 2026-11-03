@@ -1,5 +1,16 @@
 # Performance evidence
 
+## 0.6.0 candidate: spacing qualification pending
+
+No new spacing performance measurement is included here. The fifteen-command
+source candidate has local formatting, strict Clippy and 128 passing executions
+in each debug/release profile; native-four and representative wall/RSS evidence
+remain pending. The current
+[spacing control-plane contract](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/state/bed-spacing-contract-2026-11-03.md)
+tracks qualification; an accepted performance receipt is not yet available.
+Private signed-bound reuse in map/coordinate/spacing and order reuse in
+cluster/spacing do not reassign older measured executable identities below.
+
 ## 0.5.0: full-input slop and shift
 
 Measured head `161961c688a5c2ecedfe28e3dc152abd8a56a011` passes native-four

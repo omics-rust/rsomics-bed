@@ -1,6 +1,6 @@
 [package]
 name = "rsomics-bed"
-version = "0.5.0"
+version = "0.6.0"
 description = "BED interval algebra, coordinate transforms, neighborhood queries, annotation, column mapping, and genome-wide depth tracks"
 edition = "2024"
 rust-version = "1.91"

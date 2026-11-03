@@ -1,5 +1,30 @@
 # Historical implementation migration
 
+## 0.6.0 source candidate: previous-record spacing
+
+The candidate adds `spacing` as the fifteenth command; published v0.5.0 and its
+fourteen-command archives remain immutable. Historical
+`rsomics-bed-spacing@fb4ede5c9a18bfdffcaafd1e45e369d7b6402e95` is retained as
+fixture/reference only (classification 3), not merged production code.
+BEDTools 2.31.1 supplies the observed previous-record, signed widened-point and
+binary32 `1e-9` overlap semantics. Raw start ties are allowed; chromosome blocks
+cannot revisit. Optional genome order checks membership/order, not clipping.
+Initial headers, including header-only input, and opaque suffixes are retained.
+
+`spacing::{spacing, SpacingOptions}` provides the streaming library interface;
+the unified CLI retains stdin, JSON/named output, alias rejection, transactional
+output and typed errors. Identical signed point bounds are shared privately by
+map, coordinate and spacing; cluster and spacing share the raw-order validator,
+with optional genome ranking for spacing only. No Layer A API or dependency is
+added, and other operations retain their order policies.
+
+Local formatting, strict Clippy, complete debug/release suites (128 executions
+each) and one clean whole-feature review pass. Native-four correctness,
+representative spacing performance and publication are not yet qualified.
+Older measurements retain their original source/binary bindings and losses.
+Flank, makewindows and reldist remain unimplemented with separate policy holds;
+registry authorization remains held without retry.
+
 ## 0.5.0 GitHub delivery: bounded coordinate transforms
 
 Fourteen commands add `slop` and `shift` to the immutable twelve-command
