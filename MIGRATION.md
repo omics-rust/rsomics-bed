@@ -1,5 +1,42 @@
 # Historical implementation migration
 
+## 0.5.0 source candidate: bounded coordinate transforms
+
+Fourteen commands add `slop` and `shift` to the immutable twelve-command
+v0.4.0 release. `flank` remains unimplemented pending its point-output policy;
+this is not completion of the three-operation coordinate wave.
+
+Historical `rsomics-bed-slop@5fc4c997` and `rsomics-bed-shift@06ae5853`
+are fixture/reference assets only (classification 3), not production merges.
+The implementation uses the existing BED/genome readers and record output,
+a private streaming coordinate kernel, and the unified product CLI. No
+micro-crate, dependency or public foundation is added. BEDTools 2.31.1 revision
+`705ccfdf2c9a77d71560c8adcece0663c2f5e18e` is the behavioral reference.
+
+The library exposes `coordinate::{slop, shift, SlopOptions, ShiftOptions}`.
+Slop accepts finite left/right binary32 amounts, fractional and strand-relative
+selection; shift accepts finite plus/minus binary32 displacements and fractional
+selection. Both preserve initial headers when requested. Clipping, truncation,
+crossed/collapsed slop spans and expanded-point reporting are operation-specific.
+Negative strand selects reversed slop widths or minus shift; missing/unknown
+strand uses forward widths or plus shift. Invalid resulting BED coordinates,
+missing/empty chromosomes and unsupported amounts return typed `InvalidInput`
+errors; parse and I/O failures propagate. Named output retains the existing
+transactional replacement contract. No general point-boundary equivalence is
+inferred from the five captured slop/shift source goldens.
+
+Feature `446b144ed5e0b6c35be1057a8ee297022c5ff09d` and installed-lifecycle
+head `161961c688a5c2ecedfe28e3dc152abd8a56a011` pass native-four CI
+41569005243 with 127 tests per debug/release/packaged profile and 17 installed
+calls across fourteen operations per host. Root adoption checks 748 packet
+pins, all 276 Git bodies/modes and 278 source-crate members. This package still
+reports 0.4.0 and is not a formal release. The measured Mac ARM CI artifact's
+slop/shift throughput advantage and higher RSS are bound in PERFORMANCE.md.
+The 0.5.0 metadata change leaves these hot paths unchanged; final-head CI,
+publication and fresh public installation are not asserted here. Registry
+authorization remains held without retry. Earlier tags, assets and performance
+records remain unchanged.
+
 ## 0.4.0 GitHub delivery: genome coverage tracks
 
 The twelve-operation release adds `genomecov` to the eleven operations in

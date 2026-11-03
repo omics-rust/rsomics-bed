@@ -1,5 +1,56 @@
 # Performance evidence
 
+## 0.5.0 candidate: full-input slop and shift
+
+Measured head `161961c688a5c2ecedfe28e3dc152abd8a56a011` passes native-four
+CI 41569005243 (127 tests per debug/release/packaged profile, fourteen installed
+operations/17 calls per host). The measured Mac ARM artifact is 1,915,856 bytes,
+SHA-256 `7f77660e24edaeeb1c2d9cf1cda05bb9966a889f474f8982bd4687422cec5c3a`.
+Its package metadata still says 0.4.0; it is not a formal v0.4.0 release asset.
+The 0.5.0 metadata update changes no source hot path, but a rebuilt delivery
+binary has not itself been timed.
+
+The shared nonexclusive host is Apple M2, arm64, macOS 27.2, 8 GiB RAM.
+BEDTools 2.31.1 executable SHA-256 is
+`fc994e1fcfdce8ce8591630d71f21fe67e2275c2a8d967dc0e3dfb4cfa4677a3`.
+The unchanged full RefSeq input contains 584,846 rows (28,597,646 bytes),
+47 represented contigs and no point records, SHA-256
+`9fe2006b8aa58653b0f18141451473af71dc5c9ed3274ea90e0b3b627fd684bb`.
+The complete 93-contig genome has SHA-256
+`b404927655a4aada254ea94ad4da0c8901ed0737e67a0dcabedf673354b1f505`.
+
+Slop uses native `--left 100 --right 50 --strand-relative`, source
+`-l 100 -r 50 -s`; shift uses native `--plus 25 --minus -25`, source
+`-p 25 -m -25`, with the same BED/genome inputs. One warmup per tool/operation
+and five alternating measured pairs total 24 calls. All complete outputs are
+byte-identical across tools, each retaining 584,846 rows; no failures or retries.
+Wall is BSD time real at 0.01s resolution; RSS is maximum-process bytes,
+not aggregate-tree peak. Source/native/input/genome pins are unchanged afterward.
+
+| Operation | Source wall seconds | Native wall seconds | Median source/native | Source RSS bytes | Native RSS bytes |
+|---|---|---|---|---|---|
+| slop | 0.49, 0.48, 0.48, 0.48, 0.47 | 0.17, 0.16, 0.18, 0.15, 0.16 | 0.48/0.16 (3.0x) | 2605056, 2588672, 2588672, 2605056, 2605056 | 3260416, 3244032, 3211264, 3260416, 3276800 |
+| shift | 0.48, 0.48, 0.48, 0.48, 0.48 | 0.17, 0.15, 0.15, 0.15, 0.16 | 0.48/0.15 (3.2x) | 2588672, 2605056, 2605056, 2605056, 2588672 | 3244032, 3244032, 3276800, 3244032, 3260416 |
+
+All five native pairs are faster for each operation. Native RSS medians are
+3,260,416 bytes (slop) and 3,244,032 bytes (shift), higher than the source
+2,605,056 bytes: this earns a throughput gate, not a memory advantage.
+Warm cache is possible; these are not cold-cache, causal, thread-scaling,
+universal speed or other-mode claims. The input has no points; this campaign
+does not establish point-boundary compatibility or qualify flank.
+
+Slop output is 28,597,649 bytes, SHA-256
+`606bc4181b2d8cfd22c5119c105021a27a764b628f783c622f001fcf45b19b3d`;
+shift is 28,597,646 bytes, SHA-256
+`74f84199537f9d100a73a5960382ce8a2d6cbd6efbd8ddd79177513626ec720d`.
+[Control-plane receipt](https://github.com/omics-rust/rsomics-world/blob/main/.autopilot/oracles/bed-coordinate-performance-2026-11-03.json)
+retains full provenance and the independently replayed output/argv/time/RSS/pin
+checks. Local originals are
+`/Volumes/KIOXIA/Developments/tmp/bed-coordinate-performance-final-20261103.OtOc3Uyz`;
+runner SHA-256 `7802931896e694a6a9f62c61afa88578c45efed6f2b99c1a564c28ba2d68a144`,
+COMPLETE SHA-256 `237498a92fcfbacbc8726d7dae2451b6aaaaf67d8b382ef05116428fa96fad67`.
+Earlier performance records and formal release assets below remain unchanged.
+
 ## 0.4.0: full-genome coverage tracks
 
 Implementation c6e35f8650e812d7dbaaab1e8e2a9c1894e0c1b6 passes exact-head

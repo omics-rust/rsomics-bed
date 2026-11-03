@@ -15,6 +15,8 @@ rsomics-bed coverage
 rsomics-bed annotate
 rsomics-bed map
 rsomics-bed genomecov
+rsomics-bed slop
+rsomics-bed shift
 ```
 
 Query input accepts a file or standard input; secondary annotation inputs
@@ -23,6 +25,15 @@ to standard output unless `--output` is supplied. Run `rsomics-bed --help` or
 `rsomics-bed <subcommand> --help` for the complete command tree.
 
 ## Installation and delivery status
+
+The 0.5.0 source candidate adds `slop` and `shift`, for fourteen operations.
+It is not yet a published 0.5.0 release. Implementation head
+`161961c688a5c2ecedfe28e3dc152abd8a56a011` passed native Linux/macOS
+x86_64/aarch64 CI 41569005243: 127 tests per debug/release/packaged profile
+and 17 installed calls across fourteen operations per host. That CI package
+still reported 0.4.0; it is neither the formal v0.4.0 assets nor final-head
+0.5.0 delivery evidence. Final metadata-head CI and public installation remain
+release gates. `flank` is not implemented; its point-output policy is unresolved.
 
 The twelve-command product is available as [GitHub v0.4.0](https://github.com/omics-rust/rsomics-bed/releases/tag/v0.4.0),
 adding `genomecov`. Release 432026368 was published at 2026-11-02T22:18:19Z from
@@ -103,6 +114,22 @@ I/O failures use the stable common exit codes 1, 2, and 4 respectively.
   bedGraph runs, or per-base depth against a required genome file. It supports
   BED6 strand/endpoint selection, exact-width BED12 blocks, depth scaling and
   histogram depth bins, using sparse events rather than chromosome-sized arrays.
+- `slop` resizes intervals with `--bases` (`-b`) or paired `--left`/`--right`
+  (`-l`/`-r`); negative widths shrink. `--strand-relative` swaps left/right on
+  negative strands, while missing or other strand values use forward behavior.
+- `shift` moves intervals with `--shift` or paired `--plus`/`--minus`;
+  negative strands use minus, while missing or other strand values use plus.
+
+Both coordinate commands require `--input` (`-i`) and `--genome` (`-g`), accept
+signed finite amounts, clip transformed coordinates to chromosome bounds, and
+preserve record order, duplicates and trailing fields. `--fraction` interprets
+amounts relative to feature length; `--header` preserves initial headers.
+BEDTools 2.31.1's operation-specific floating-point/truncation and expanded-point
+rules apply, not a generic integer translation. Unknown or empty chromosomes,
+unrepresentable amounts and invalid transformed intervals return typed
+`InvalidInput` errors rather than illegal BED rows. Malformed input and I/O
+errors propagate. These commands do not require sorted input. BED and genome
+may each use stdin, but not simultaneously; JSON requires a named output.
 
 `genomecov` requires chromosome-grouped BED, but starts within a group need not
 be sorted. Selected chromosome groups retain encounter order; untouched
@@ -196,6 +223,14 @@ native/source wall is 0.21/113.77s; zero-inclusive bedGraph is 0.36/20.80s.
 Measured maximum-process RSS is 5.51/1,998.32MB in both modes. These are scoped
 full-workflow results bound to the c6e35 implementation and measured Linux
 executables, not measurements of the 0.4.0 release binaries or other modes.
+
+For the full 584,846-row RefSeq input and 93-contig genome on shared Apple M2,
+the measured new-head CI artifact has source/native wall medians 0.48/0.16s
+for strand-relative slop and 0.48/0.15s for strand-selected shift (3.0x/3.2x).
+Native maximum-process RSS is higher: 3,260,416/3,244,032 bytes versus source
+2,605,056 bytes. Complete outputs match; these fixed-flag results are not
+measurements of a rebuilt 0.5.0 binary, other modes or cold-cache performance.
+See [PERFORMANCE.md](PERFORMANCE.md) for distributions and executable bindings.
 
 ## Origin
 
