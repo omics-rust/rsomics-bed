@@ -1,4 +1,4 @@
-"""Verify source packaging and the installed twelve-operation BED candidate."""
+"""Verify source packaging and the installed fourteen-operation BED candidate."""
 
 import argparse
 import hashlib
@@ -12,7 +12,7 @@ import tarfile
 
 PRODUCT = 'rsomics-bed'
 ROOT = Path(__file__).resolve().parents[1]
-OPERATIONS = ['sort', 'merge', 'intersect', 'subtract', 'complement', 'cluster', 'window', 'closest', 'coverage', 'annotate', 'map', 'genomecov']
+OPERATIONS = ['sort', 'merge', 'intersect', 'subtract', 'complement', 'cluster', 'window', 'closest', 'coverage', 'annotate', 'map', 'genomecov', 'slop', 'shift']
 HOSTS = {'linux-x86_64': 'x86_64-unknown-linux-gnu', 'linux-aarch64': 'aarch64-unknown-linux-gnu',
          'macos-x86_64': 'x86_64-apple-darwin', 'macos-aarch64': 'aarch64-apple-darwin'}
 
@@ -226,6 +226,12 @@ def smoke(binary):
             result['tool_version'] == os.environ['PACKAGE_VERSION'] and result['result'] is None and
             genome_coverage.read_bytes() == (fixture / 'genomecov/bedgraph-all.stdout').read_bytes(),
             'installed stdin/genomecov JSON or complete output differs')
+    golden(['slop', '--input', fixture / 'coordinate/input.bed', '--genome', fixture / 'coordinate/genome.tsv',
+            '--header', '--left', '3', '--right', '5', '--strand-relative'],
+           'coordinate/slop-absolute.stdout')
+    golden(['shift', '--input', fixture / 'coordinate/input.bed', '--genome', fixture / 'coordinate/genome.tsv',
+            '--header', '--plus', '0.5', '--minus', '-2.5', '--fraction'],
+           'coordinate/shift-fraction.stdout')
     protected = directory / 'protected.bed'
     protected.write_bytes(b'previous result\n')
     out, err = run(['--json', 'intersect', '-a', fixture / 'intersect.malformed-a.bed',
@@ -235,7 +241,7 @@ def smoke(binary):
             diagnostic['error']['kind'] == 'InvalidInput' and diagnostic['exit_code'] == 1 and
             'greater than end' in err.read_text() and protected.read_bytes() == b'previous result\n',
             'installed malformed-input failure lost input-error diagnostics or output atomicity')
-    require(len(records) == 15, 'installed lifecycle call count differs')
+    require(len(records) == 17, 'installed lifecycle call count differs')
     save(directory / 'VERIFIED.json', dict(installed_binary=identity(binary), calls=records,
          stable_operations=OPERATIONS, stdin_sort=True, sort_output_reloaded_by_merge=True,
          coverage_stdin_pooled_json_byte_exact=True, release_acceptance=False,
@@ -244,7 +250,7 @@ def smoke(binary):
          genomecov_stdin_zero_runs_json_byte_exact=True,
          common_json_named_output=True, golden_outputs_byte_exact=True, failure_preserves_prior_output=True,
          files={p.name: identity(p) for p in directory.iterdir() if p.is_file()},
-         scope='installed twelve-operation candidate lifecycle; not upstream, performance or public release acceptance'))
+         scope='installed fourteen-operation candidate lifecycle; not upstream, performance or public release acceptance'))
 
 
 def bundle(binary):
