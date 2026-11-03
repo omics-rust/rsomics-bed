@@ -1,0 +1,11 @@
+# coordinate-generation witness
+track name=coordinates
+chr1	8	13	left	1	+	keep:L
+chr1	16	23	plus	2	+	keep:P
+chr1	16	23	minus	3	-	keep:M
+chr1	29	30	right	4	-	keep:R
+chr1	23	23	point-plus	5	+	keep:PP
+chr1	23	23	point-minus	6	-	keep:PM
+chr1	8	8	origin	7	+	keep:O
+chr2	9	10	unstranded	8	.	keep:U
+chr2	9	10	edge	9	+	keep:E

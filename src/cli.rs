@@ -1,5 +1,6 @@
 //! Command-line parsing and dispatch for the product binary.
 
+mod coordinate;
 mod genomecov;
 mod map;
 
@@ -64,6 +65,10 @@ enum Command {
     Map(map::Args),
     /// Report genome-wide coverage tracks or depth histograms from grouped BED
     Genomecov(genomecov::Args),
+    /// Expand or shrink intervals within chromosome bounds
+    Slop(coordinate::SlopArgs),
+    /// Shift intervals within chromosome bounds
+    Shift(coordinate::ShiftArgs),
 }
 
 #[derive(Debug, Args)]
@@ -490,6 +495,8 @@ fn execute(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Map(args) => map::execute(args, json),
         Command::Genomecov(args) => genomecov::execute(args, json),
+        Command::Slop(args) => coordinate::execute_slop(args, json),
+        Command::Shift(args) => coordinate::execute_shift(args, json),
         Command::Annotate(args) => {
             require_named_json_output(json, args.output.as_deref())?;
             for path in &args.files {

@@ -9,6 +9,7 @@ mod cli;
 pub mod closest;
 pub mod cluster;
 pub mod complement;
+pub mod coordinate;
 pub mod coverage;
 mod depth;
 pub mod genomecov;

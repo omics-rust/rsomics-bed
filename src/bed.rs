@@ -38,16 +38,17 @@ impl BedRecord {
     }
 
     pub(crate) fn column(&self, index: usize, label: &str) -> Result<&[u8]> {
-        self.raw
-            .split(|&byte| byte == b'\t')
-            .nth(index)
-            .ok_or_else(|| {
-                invalid(format!(
-                    "{label} BED line {}: missing column {}",
-                    self.line_number,
-                    index + 1
-                ))
-            })
+        self.optional_column(index).ok_or_else(|| {
+            invalid(format!(
+                "{label} BED line {}: missing column {}",
+                self.line_number,
+                index + 1
+            ))
+        })
+    }
+
+    pub(crate) fn optional_column(&self, index: usize) -> Option<&[u8]> {
+        self.raw.split(|&byte| byte == b'\t').nth(index)
     }
 
     pub(crate) fn name(&self, label: &str) -> Result<&[u8]> {
